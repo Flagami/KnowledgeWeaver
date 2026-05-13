@@ -1,17 +1,15 @@
 # KnowledgeWeaver Deployment Guide
 
-Complete guide for deploying KnowledgeWeaver in various environments.
+Complete guide for deploying KnowledgeWeaver locally or using Docker.
 
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
 2. [Local Deployment](#local-deployment)
 3. [Docker Deployment](#docker-deployment)
-4. [Cloud Deployment](#cloud-deployment)
-5. [Environment Configuration](#environment-configuration)
-6. [Database Setup](#database-setup)
-7. [Monitoring & Logging](#monitoring--logging)
-8. [Troubleshooting](#troubleshooting)
+4. [Environment Configuration](#environment-configuration)
+5. [Running the Application](#running-the-application)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -19,7 +17,8 @@ Complete guide for deploying KnowledgeWeaver in various environments.
 
 ### System Requirements
 
-- **Python**: 3.9 or higher
+- **Python**: 3.9 or higher (for local deployment)
+- **Docker**: Latest version (for Docker deployment)
 - **Memory**: Minimum 2GB RAM (4GB+ recommended)
 - **Disk Space**: 5GB for dependencies and cache
 - **Network**: Internet access for API calls
@@ -44,7 +43,7 @@ Complete guide for deploying KnowledgeWeaver in various environments.
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/KnowledgeWeaver.git
+git clone https://github.com/Flagami/KnowledgeWeaver.git
 cd KnowledgeWeaver
 ```
 
@@ -70,6 +69,9 @@ pip install --upgrade pip
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install web UI dependencies (optional)
+pip install -r requirements-web.txt
 ```
 
 ### Step 4: Configure Environment
@@ -82,6 +84,31 @@ cp .env.example .env
 nano .env  # or use your preferred editor
 ```
 
+Edit `.env` and add your Anthropic API key:
+
+```env
+# Claude API Configuration (REQUIRED)
+ANTHROPIC_API_KEY=sk-ant-your-actual-api-key-here
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+ANTHROPIC_MODEL=claude-opus-4-7
+
+# Research APIs (Optional)
+SEMANTIC_SCHOLAR_API_KEY=
+CROSSREF_EMAIL=your-email@example.com
+
+# System Configuration
+CONCURRENT_QUERIES=8
+QUERY_TIMEOUT_SECONDS=300
+LOG_LEVEL=INFO
+
+# Storage
+DATABASE_PATH=./knowledgeweaver.db
+OUTPUT_DIR=./outputs
+
+# Development
+DEBUG=false
+```
+
 ### Step 5: Initialize Database
 
 ```bash
@@ -91,58 +118,58 @@ python -c "from knowledgeweaver.storage.database import init_database; init_data
 
 ### Step 6: Run Application
 
-```bash
-# Run TUI application
-python -m knowledgeweaver.ui.app
+Choose one of the following methods:
 
-# Or run as Python module
-python -c "from knowledgeweaver.core.synthesis_pipeline import SynthesisPipeline; print('Ready to use!')"
+#### Option A: Run Web UI (Recommended)
+
+```bash
+# Start the web UI server
+python run_web_ui.py
+
+# Open your browser at: http://localhost:8000
 ```
 
-### Step 7: Verify Installation
+#### Option B: Run Python API
 
 ```bash
-# Run tests to verify everything works
-pytest tests/unit/ -v
-pytest tests/integration/ -v
+# Create a Python script to use the API
+cat > run_synthesis.py << 'EOF'
+import asyncio
+from knowledgeweaver.core.synthesis_pipeline import SynthesisPipeline
+from knowledgeweaver.core.query_manager import Query
+
+async def main():
+    pipeline = SynthesisPipeline()
+    query = Query(
+        query_text="machine learning applications in healthcare",
+        domain="AI/ML"
+    )
+    result_path = await pipeline.process(query, depth="medium")
+    print(f"✅ Report saved to: {result_path}")
+
+asyncio.run(main())
+EOF
+
+# Run the script
+python run_synthesis.py
+```
+
+#### Option C: Run TUI (Terminal User Interface)
+
+```bash
+# Run the TUI application
+python test_tui_simple.py
 ```
 
 ---
 
 ## Docker Deployment
 
-### Step 1: Create Dockerfile
+### Step 1: Build Docker Image
 
-Create `Dockerfile` in project root:
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application
-COPY . .
-
-# Create output directory
-RUN mkdir -p output
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV LOG_LEVEL=INFO
-
-# Run application
-CMD ["python", "-m", "knowledgeweaver.ui.app"]
+```bash
+# Build the Docker image
+docker build -t knowledgeweaver:latest .
 ```
 
 ### Step 2: Create Docker Compose File
@@ -158,7 +185,8 @@ services:
     container_name: knowledgeweaver
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - LLM_MODEL=claude-opus-4-7
+      - ANTHROPIC_BASE_URL=https://api.anthropic.com
+      - ANTHROPIC_MODEL=claude-opus-4-7
       - CONCURRENT_QUERIES=8
       - LOG_LEVEL=INFO
       - DATABASE_PATH=/app/data/knowledgeweaver.db
@@ -171,34 +199,57 @@ services:
       - "8000:8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import knowledgeweaver; print('healthy')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 ```
 
-### Step 3: Build and Run
+### Step 3: Create .env File for Docker
 
 ```bash
-# Build Docker image
-docker build -t knowledgeweaver:latest .
+# Create .env file with your API key
+cat > .env << 'EOF'
+ANTHROPIC_API_KEY=sk-ant-your-actual-api-key-here
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+ANTHROPIC_MODEL=claude-opus-4-7
+CONCURRENT_QUERIES=8
+QUERY_TIMEOUT_SECONDS=300
+LOG_LEVEL=INFO
+DATABASE_PATH=/app/data/knowledgeweaver.db
+OUTPUT_DIR=/app/output
+DEBUG=false
+EOF
+```
 
-# Run with Docker Compose
+### Step 4: Run with Docker Compose
+
+```bash
+# Start the container
 docker-compose up -d
 
 # View logs
 docker-compose logs -f knowledgeweaver
 
-# Stop container
+# Stop the container
 docker-compose down
 ```
 
-### Step 4: Verify Docker Deployment
+### Step 5: Access the Application
+
+```bash
+# Open your browser at: http://localhost:8000
+```
+
+### Step 6: Verify Docker Deployment
 
 ```bash
 # Check container status
 docker ps | grep knowledgeweaver
+
+# Check container logs
+docker logs knowledgeweaver
 
 # Run tests inside container
 docker-compose exec knowledgeweaver pytest tests/unit/ -v
@@ -209,200 +260,22 @@ docker-compose exec knowledgeweaver bash
 
 ---
 
-## Cloud Deployment
-
-### AWS Deployment (EC2)
-
-#### Step 1: Launch EC2 Instance
-
-```bash
-# Using AWS CLI
-aws ec2 run-instances \
-  --image-id ami-0c55b159cbfafe1f0 \
-  --instance-type t3.medium \
-  --key-name your-key-pair \
-  --security-groups default
-```
-
-#### Step 2: Connect and Setup
-
-```bash
-# SSH into instance
-ssh -i your-key.pem ec2-user@your-instance-ip
-
-# Update system
-sudo yum update -y
-
-# Install Python and dependencies
-sudo yum install -y python3 python3-pip git
-
-# Clone repository
-git clone https://github.com/yourusername/KnowledgeWeaver.git
-cd KnowledgeWeaver
-
-# Follow local deployment steps
-```
-
-#### Step 3: Configure for Production
-
-```bash
-# Create systemd service file
-sudo nano /etc/systemd/system/knowledgeweaver.service
-```
-
-Add:
-
-```ini
-[Unit]
-Description=KnowledgeWeaver Research Synthesis
-After=network.target
-
-[Service]
-Type=simple
-User=ec2-user
-WorkingDirectory=/home/ec2-user/KnowledgeWeaver
-Environment="PATH=/home/ec2-user/KnowledgeWeaver/venv/bin"
-Environment="ANTHROPIC_API_KEY=your_api_key"
-ExecStart=/home/ec2-user/KnowledgeWeaver/venv/bin/python -m knowledgeweaver.ui.app
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-# Enable and start service
-sudo systemctl daemon-reload
-sudo systemctl enable knowledgeweaver
-sudo systemctl start knowledgeweaver
-
-# Check status
-sudo systemctl status knowledgeweaver
-```
-
-### Heroku Deployment
-
-#### Step 1: Create Heroku App
-
-```bash
-# Install Heroku CLI
-# https://devcenter.heroku.com/articles/heroku-cli
-
-# Login to Heroku
-heroku login
-
-# Create app
-heroku create knowledgeweaver-app
-
-# Add buildpack
-heroku buildpacks:add heroku/python
-```
-
-#### Step 2: Create Procfile
-
-Create `Procfile`:
-
-```
-web: python -m knowledgeweaver.ui.app
-worker: python -m knowledgeweaver.core.synthesis_pipeline
-```
-
-#### Step 3: Set Environment Variables
-
-```bash
-# Set API key
-heroku config:set ANTHROPIC_API_KEY=your_api_key
-
-# Set other variables
-heroku config:set LLM_MODEL=claude-opus-4-7
-heroku config:set CONCURRENT_QUERIES=4
-heroku config:set LOG_LEVEL=INFO
-```
-
-#### Step 4: Deploy
-
-```bash
-# Deploy to Heroku
-git push heroku main
-
-# View logs
-heroku logs --tail
-
-# Scale dynos
-heroku ps:scale web=1 worker=1
-```
-
-### Google Cloud Run Deployment
-
-#### Step 1: Create Cloud Run Service
-
-```bash
-# Set project
-gcloud config set project YOUR_PROJECT_ID
-
-# Build and push to Container Registry
-gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/knowledgeweaver
-
-# Deploy to Cloud Run
-gcloud run deploy knowledgeweaver \
-  --image gcr.io/YOUR_PROJECT_ID/knowledgeweaver \
-  --platform managed \
-  --region us-central1 \
-  --memory 2Gi \
-  --timeout 3600 \
-  --set-env-vars ANTHROPIC_API_KEY=your_api_key
-```
-
-#### Step 2: Configure Cloud Storage
-
-```bash
-# Create bucket for output
-gsutil mb gs://knowledgeweaver-output
-
-# Update environment variable
-gcloud run services update knowledgeweaver \
-  --set-env-vars OUTPUT_DIR=/tmp/output
-```
-
----
-
 ## Environment Configuration
 
-### Required Environment Variables
+### Required Variables
 
-```env
-# Claude API Configuration
-ANTHROPIC_API_KEY=sk-ant-...          # Your Anthropic API key
-LLM_MODEL=claude-opus-4-7             # Claude model to use
+- `ANTHROPIC_API_KEY` — Your Anthropic API key (required)
+- `ANTHROPIC_BASE_URL` — Anthropic API endpoint (default: https://api.anthropic.com)
+- `ANTHROPIC_MODEL` — Claude model to use (default: claude-opus-4-7)
 
-# Application Configuration
-CONCURRENT_QUERIES=8                  # Max concurrent queries
-QUERY_TIMEOUT_SECONDS=300             # Query timeout in seconds
-LOG_LEVEL=INFO                        # Logging level
+### Optional Variables
 
-# Storage Configuration
-DATABASE_PATH=./knowledgeweaver.db    # Database file path
-OUTPUT_DIR=./output                   # Output directory for reports
-```
-
-### Optional Environment Variables
-
-```env
-# Performance Tuning
-CACHE_TTL_SECONDS=3600                # Cache time-to-live
-PAPER_CACHE_DAYS=30                   # Paper cache expiry
-
-# API Configuration
-ARXIV_API_TIMEOUT=30                  # arXiv API timeout
-PUBMED_API_TIMEOUT=30                 # PubMed API timeout
-SEMANTIC_SCHOLAR_TIMEOUT=30           # Semantic Scholar timeout
-CROSSREF_TIMEOUT=30                   # CrossRef timeout
-
-# Monitoring
-ENABLE_METRICS=true                   # Enable performance metrics
-METRICS_PORT=9090                     # Metrics port
-```
+- `CONCURRENT_QUERIES` — Maximum concurrent queries (default: 8)
+- `QUERY_TIMEOUT_SECONDS` — Query timeout in seconds (default: 300)
+- `LOG_LEVEL` — Logging level (default: INFO)
+- `DATABASE_PATH` — SQLite database path (default: ./knowledgeweaver.db)
+- `OUTPUT_DIR` — Output directory for reports (default: ./outputs)
+- `DEBUG` — Enable debug mode (default: false)
 
 ### Production Configuration
 
@@ -410,381 +283,244 @@ For production deployments, use:
 
 ```env
 # Security
-LOG_LEVEL=WARNING                     # Reduce log verbosity
-CONCURRENT_QUERIES=4                  # Conservative concurrency
-QUERY_TIMEOUT_SECONDS=600             # Longer timeout for stability
+LOG_LEVEL=WARNING
+CONCURRENT_QUERIES=4
+QUERY_TIMEOUT_SECONDS=600
 
 # Performance
-CACHE_TTL_SECONDS=7200                # Longer cache TTL
-PAPER_CACHE_DAYS=60                   # Longer paper cache
-
-# Monitoring
-ENABLE_METRICS=true
-METRICS_PORT=9090
+CACHE_TTL_SECONDS=7200
+PAPER_CACHE_DAYS=60
 ```
 
 ---
 
-## Database Setup
+## Running the Application
 
-### SQLite (Default)
+### Web UI (Recommended)
 
-```bash
-# Database is automatically created at DATABASE_PATH
-# Default: ./knowledgeweaver.db
-
-# Backup database
-cp knowledgeweaver.db knowledgeweaver.db.backup
-
-# Restore database
-cp knowledgeweaver.db.backup knowledgeweaver.db
-```
-
-### PostgreSQL (Production)
-
-#### Step 1: Install PostgreSQL
+The Web UI provides a user-friendly interface for non-technical users.
 
 ```bash
-# macOS
-brew install postgresql
+# Start the web UI
+python run_web_ui.py
 
-# Ubuntu/Debian
-sudo apt-get install postgresql postgresql-contrib
-
-# Start PostgreSQL
-sudo systemctl start postgresql
+# Open browser at: http://localhost:8000
 ```
 
-#### Step 2: Create Database
+**Features:**
+- Beautiful, responsive interface
+- Query submission form
+- Real-time statistics
+- Result display with star ratings
+- Feedback collection
 
-```bash
-# Create database
-createdb knowledgeweaver
+### Python API
 
-# Create user
-createuser knowledgeweaver_user
-
-# Set password
-psql -c "ALTER USER knowledgeweaver_user WITH PASSWORD 'secure_password';"
-
-# Grant privileges
-psql -c "GRANT ALL PRIVILEGES ON DATABASE knowledgeweaver TO knowledgeweaver_user;"
-```
-
-#### Step 3: Update Configuration
-
-Update `.env`:
-
-```env
-DATABASE_URL=postgresql://knowledgeweaver_user:secure_password@localhost:5432/knowledgeweaver
-```
-
-#### Step 4: Run Migrations
-
-```bash
-# Alembic migrations (if using)
-alembic upgrade head
-```
-
----
-
-## Monitoring & Logging
-
-### Application Logging
-
-```bash
-# View logs
-tail -f logs/knowledgeweaver.log
-
-# Filter logs by level
-grep "ERROR" logs/knowledgeweaver.log
-grep "WARNING" logs/knowledgeweaver.log
-
-# Rotate logs
-logrotate -f /etc/logrotate.d/knowledgeweaver
-```
-
-### Performance Monitoring
+The Python API is for developers and advanced users.
 
 ```python
-from knowledgeweaver.core.performance import performance_monitor
+import asyncio
+from knowledgeweaver.core.synthesis_pipeline import SynthesisPipeline
+from knowledgeweaver.core.query_manager import Query
 
-# Get performance statistics
-stats = performance_monitor.get_all_stats()
-print(stats)
+async def main():
+    pipeline = SynthesisPipeline()
+    query = Query(query_text="your topic", domain="AI/ML")
+    result = await pipeline.process(query, depth="medium")
+    print(f"Result: {result}")
 
-# Get bottlenecks
-bottlenecks = performance_monitor.get_bottlenecks()
-for operation, total_time in bottlenecks:
-    print(f"{operation}: {total_time:.2f}s")
+asyncio.run(main())
 ```
 
-### Health Checks
+### TUI (Terminal User Interface)
+
+The TUI is for terminal enthusiasts.
 
 ```bash
-# Check application health
-curl http://localhost:8000/health
-
-# Check database
-python -c "from knowledgeweaver.storage.database import get_db_session; session = get_db_session(); print('Database OK')"
-
-# Check API connectivity
-python -c "from anthropic import Anthropic; client = Anthropic(); print('API OK')"
-```
-
-### Monitoring Tools
-
-#### Prometheus Integration
-
-```python
-from prometheus_client import Counter, Histogram, start_http_server
-
-# Start metrics server
-start_http_server(9090)
-
-# Create metrics
-query_counter = Counter('queries_total', 'Total queries')
-synthesis_time = Histogram('synthesis_seconds', 'Synthesis time')
-```
-
-#### ELK Stack Integration
-
-```python
-from pythonjsonlogger import jsonlogger
-import logging
-
-# Configure JSON logging for ELK
-logger = logging.getLogger()
-handler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter()
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Run the TUI test
+python test_tui_simple.py
 ```
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Issue 1: "ANTHROPIC_API_KEY not found"
 
-#### Issue: API Key Not Found
-
+**Solution:**
 ```bash
-# Check environment variable
-echo $ANTHROPIC_API_KEY
+# Check if .env file exists
+ls -la .env
 
-# Set API key
-export ANTHROPIC_API_KEY=your_api_key
+# Check if API key is set
+grep ANTHROPIC_API_KEY .env
 
-# Verify
-python -c "import os; print(os.getenv('ANTHROPIC_API_KEY'))"
+# If not set, edit the file
+nano .env
+# Add: ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
-#### Issue: Database Locked
+### Issue 2: "Connection refused" or "API timeout"
 
+**Solution:**
 ```bash
-# Check for running processes
-lsof | grep knowledgeweaver.db
+# Check internet connection
+ping api.anthropic.com
 
-# Kill process if needed
-kill -9 <PID>
+# Increase timeout in .env
+QUERY_TIMEOUT_SECONDS=600
 
-# Reset database
+# Reduce concurrent queries
+CONCURRENT_QUERIES=2
+```
+
+### Issue 3: "Database is locked"
+
+**Solution:**
+```bash
+# Remove the database file
 rm knowledgeweaver.db
+
+# Reinitialize
 python -c "from knowledgeweaver.storage.database import init_database; init_database()"
 ```
 
-#### Issue: Memory Issues
+### Issue 4: "ModuleNotFoundError: No module named 'knowledgeweaver'"
 
+**Solution:**
 ```bash
-# Monitor memory usage
-top -p $(pgrep -f knowledgeweaver)
+# Make sure virtual environment is activated
+source venv/bin/activate  # or source .venv/bin/activate
 
-# Reduce concurrent queries
-export CONCURRENT_QUERIES=2
+# Reinstall dependencies
+pip install -r requirements.txt
+
+# Verify installation
+python -c "import knowledgeweaver; print('OK')"
+```
+
+### Issue 5: Docker container won't start
+
+**Solution:**
+```bash
+# Check Docker logs
+docker-compose logs knowledgeweaver
+
+# Rebuild the image
+docker-compose build --no-cache
+
+# Start again
+docker-compose up -d
+```
+
+### Issue 6: "Port 8000 already in use"
+
+**Solution:**
+```bash
+# Find process using port 8000
+lsof -i :8000
+
+# Kill the process
+kill -9 <PID>
+
+# Or use a different port in docker-compose.yml
+ports:
+  - "8001:8000"
+```
+
+### Issue 7: Memory issues or slow performance
+
+**Solution:**
+```bash
+# Reduce concurrent queries in .env
+CONCURRENT_QUERIES=2
+
+# Use shallow depth for faster processing
+# In your script: depth="shallow"
 
 # Clear cache
-rm -rf output/paper_cache
-```
+rm -rf outputs/paper_cache
 
-#### Issue: Slow Performance
-
-```bash
-# Check performance metrics
-python -c "from knowledgeweaver.core.performance import performance_monitor; print(performance_monitor.get_all_stats())"
-
-# Get recommendations
-from knowledgeweaver.core.performance import PerformanceTuner
-tuner = PerformanceTuner(performance_monitor)
-print(tuner.get_recommendations())
-```
-
-### Debug Mode
-
-```bash
-# Enable debug logging
-export LOG_LEVEL=DEBUG
-
-# Run with verbose output
-python -m knowledgeweaver.ui.app --verbose
-
-# Run tests with output
-pytest tests/ -v -s
-```
-
-### Performance Optimization
-
-```bash
-# Enable caching
-export CACHE_TTL_SECONDS=7200
-
-# Increase paper cache
-export PAPER_CACHE_DAYS=60
-
-# Optimize database
-python -c "from knowledgeweaver.storage.database import optimize_database; optimize_database()"
+# Monitor memory usage
+top -p $(pgrep -f knowledgeweaver)
 ```
 
 ---
 
-## Scaling Considerations
+## Useful Commands
 
-### Horizontal Scaling
+### Local Deployment
 
 ```bash
-# Run multiple instances with load balancer
-# Instance 1
-export INSTANCE_ID=1
-python -m knowledgeweaver.ui.app
+# Activate virtual environment
+source venv/bin/activate
 
-# Instance 2
-export INSTANCE_ID=2
-python -m knowledgeweaver.ui.app
+# Deactivate virtual environment
+deactivate
 
-# Use nginx for load balancing
-# See nginx.conf example below
+# Check installed packages
+pip list
+
+# Update dependencies
+pip install --upgrade -r requirements.txt
+
+# View logs
+tail -f logs/knowledgeweaver.log
+
+# Clear cache
+rm -rf outputs/paper_cache
+
+# Reset database
+rm knowledgeweaver.db
+
+# Run tests
+pytest tests/unit/ -v
 ```
 
-### Vertical Scaling
+### Docker Deployment
 
 ```bash
-# Increase resources
-export CONCURRENT_QUERIES=16
-export CACHE_TTL_SECONDS=14400
+# Build image
+docker build -t knowledgeweaver:latest .
 
-# Use PostgreSQL instead of SQLite
-export DATABASE_URL=postgresql://...
-```
+# Start container
+docker-compose up -d
 
-### Database Optimization
+# Stop container
+docker-compose down
 
-```bash
-# Create indexes
-CREATE INDEX idx_query_domain ON query(domain);
-CREATE INDEX idx_paper_source ON paper(source);
-CREATE INDEX idx_preferences_domain ON user_preferences(domain);
+# View logs
+docker-compose logs -f
 
-# Analyze query performance
-EXPLAIN ANALYZE SELECT * FROM query WHERE domain = 'AI/ML';
-```
+# Execute command in container
+docker-compose exec knowledgeweaver bash
 
----
+# Remove image
+docker rmi knowledgeweaver:latest
 
-## Backup & Recovery
-
-### Backup Strategy
-
-```bash
-# Daily backup
-0 2 * * * /usr/local/bin/backup-knowledgeweaver.sh
-
-# Create backup script
-cat > /usr/local/bin/backup-knowledgeweaver.sh << 'EOF'
-#!/bin/bash
-BACKUP_DIR="/backups/knowledgeweaver"
-DATE=$(date +%Y%m%d_%H%M%S)
-mkdir -p $BACKUP_DIR
-cp /app/knowledgeweaver.db $BACKUP_DIR/knowledgeweaver_$DATE.db
-tar -czf $BACKUP_DIR/output_$DATE.tar.gz /app/output
-# Keep only last 30 days
-find $BACKUP_DIR -mtime +30 -delete
-EOF
-
-chmod +x /usr/local/bin/backup-knowledgeweaver.sh
-```
-
-### Recovery Procedure
-
-```bash
-# Restore from backup
-cp /backups/knowledgeweaver/knowledgeweaver_20240101_020000.db ./knowledgeweaver.db
-
-# Restore output files
-tar -xzf /backups/knowledgeweaver/output_20240101_020000.tar.gz
-
-# Verify restoration
-python -c "from knowledgeweaver.storage.database import get_db_session; session = get_db_session(); print('Database restored')"
+# Remove all containers and volumes
+docker-compose down -v
 ```
 
 ---
 
-## Security Considerations
+## Next Steps
 
-### API Key Management
-
-```bash
-# Use environment variables (not in code)
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Use secrets manager (production)
-# AWS Secrets Manager
-aws secretsmanager get-secret-value --secret-id knowledgeweaver/api-key
-
-# HashiCorp Vault
-vault kv get secret/knowledgeweaver/api-key
-```
-
-### Network Security
-
-```bash
-# Use HTTPS only
-# Configure SSL certificate
-# Use firewall rules to restrict access
-
-# Example nginx configuration
-server {
-    listen 443 ssl;
-    ssl_certificate /etc/ssl/certs/knowledgeweaver.crt;
-    ssl_certificate_key /etc/ssl/private/knowledgeweaver.key;
-    
-    location / {
-        proxy_pass http://localhost:8000;
-    }
-}
-```
-
-### Database Security
-
-```bash
-# Use strong passwords
-# Enable authentication
-# Restrict network access
-# Use encrypted connections
-
-# PostgreSQL example
-psql -U knowledgeweaver_user -h localhost -d knowledgeweaver
-```
+1. **Choose deployment method** — Local or Docker
+2. **Configure environment** — Add your API key
+3. **Run the application** — Use Web UI, Python API, or TUI
+4. **Submit queries** — Start researching
+5. **Provide feedback** — Help the system learn
 
 ---
 
 ## Support & Resources
 
 - 📖 [Main README](./README.md)
-- 🐛 [Issue Tracker](https://github.com/yourusername/KnowledgeWeaver/issues)
-- 💬 [Discussions](https://github.com/yourusername/KnowledgeWeaver/discussions)
-- 📧 Email: support@knowledgeweaver.dev
+- 🖥️ [Local Mac Deployment Guide](./LOCAL_DEPLOYMENT_MAC.md)
+- 🐛 [Issue Tracker](https://github.com/Flagami/KnowledgeWeaver/issues)
+- 💬 [Discussions](https://github.com/Flagami/KnowledgeWeaver/discussions)
 
 ---
 
-**Last Updated**: 2024
-**Version**: 1.0
+**Happy researching! 🧠**
