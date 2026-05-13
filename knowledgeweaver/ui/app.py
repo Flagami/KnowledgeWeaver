@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult, on
 from textual.containers import Container, Horizontal, Vertical
+from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Header, Input, Label, Static, TextArea
 from textual.binding import Binding
@@ -13,6 +14,18 @@ from knowledgeweaver.utils.logger import logger
 
 class QueryInputWidget(Static):
     """Widget for query input."""
+
+    class QuerySubmitted(Message):
+        """Message when query is submitted."""
+
+        def __init__(self, query: str) -> None:
+            self.query = query
+            super().__init__()
+
+    class ShowHistory(Message):
+        """Message to show history."""
+
+        pass
 
     def compose(self) -> ComposeResult:
         """Compose the query input widget."""
@@ -38,18 +51,6 @@ class QueryInputWidget(Static):
             query_input.value = ""
         elif event.button.id == "history_btn":
             self.post_message(self.ShowHistory())
-
-    class QuerySubmitted(Static.Posted):
-        """Message when query is submitted."""
-
-        def __init__(self, query: str) -> None:
-            self.query = query
-            super().__init__()
-
-    class ShowHistory(Static.Posted):
-        """Message to show history."""
-
-        pass
 
 
 class StatusPanel(Static):
