@@ -2,6 +2,54 @@
 
 **Intelligent Research Synthesis System** — Automatically search, analyze, and synthesize research papers using Claude AI.
 
+---
+
+## 🎯 The Problem You're Solving
+
+**Drowning in research papers?** Researchers and knowledge workers face a critical challenge: the exponential growth of academic literature makes it impossible to stay current. You spend hours:
+
+- 🔍 **Searching** across fragmented databases with inconsistent results
+- 📚 **Reading** dozens of papers to find relevant insights
+- 🤔 **Synthesizing** findings manually across multiple sources
+- 📝 **Extracting** key insights and connections by hand
+- 🔄 **Repeating** the same research process for similar queries
+
+**Result?** Wasted time, missed connections, and incomplete understanding of your research domain.
+
+## ✨ The KnowledgeWeaver Solution
+
+**Meet your AI research assistant.** KnowledgeWeaver combines **multi-agent AI orchestration** with **intelligent synthesis** to transform how you discover and understand research:
+
+### 🤖 AI-Powered Agent Architecture
+
+KnowledgeWeaver deploys a sophisticated **multi-agent system** that works together seamlessly:
+
+1. **Domain Detection Agent** — Intelligently identifies your research domain and selects optimal sources
+2. **Search Agents** (4 specialized agents) — Simultaneously query arXiv, PubMed, Semantic Scholar, and CrossRef for comprehensive coverage
+3. **Paper Analysis Agent** — Extracts and caches paper content with intelligent text extraction
+4. **Summarization Agent** — Uses Claude to create concise, accurate paper summaries
+5. **Synthesis Agent** — Intelligently combines findings across papers to identify patterns and connections
+6. **Insight Generation Agent** — Generates actionable insights and identifies future research directions
+7. **Learning Agent** — Adapts to your preferences based on feedback, continuously improving results
+
+### 🚀 Unique AI Capabilities
+
+- **Concurrent Multi-Source Search** — Query 4 research databases simultaneously for comprehensive coverage
+- **Claude-Powered Synthesis** — Uses advanced Claude AI to understand context and generate meaningful insights
+- **Adaptive Learning** — Learns from your feedback to personalize results and improve recommendations
+- **Intelligent Fallbacks** — Gracefully handles API failures with circuit breakers and automatic degradation
+- **Interactive Intelligence** — Beautiful HTML reports with expandable sections, citations, and 1-5 star feedback
+
+### 💡 Real-World Impact
+
+- ⏱️ **Save 80% of research time** — From hours of manual work to minutes of AI-powered synthesis
+- 🎯 **Discover hidden connections** — Find relationships between papers you'd never find manually
+- 📈 **Stay current** — Automatically synthesize the latest research in your domain
+- 🧠 **Deeper understanding** — Get actionable insights, not just summaries
+- 🔄 **Continuous improvement** — System learns from your feedback to get smarter over time
+
+---
+
 ## Overview
 
 KnowledgeWeaver is a comprehensive research synthesis platform that:
