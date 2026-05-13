@@ -14,7 +14,8 @@ class Settings(BaseSettings):
 
     # Claude API Configuration
     anthropic_api_key: str
-    llm_model: str = "claude-opus-4-7"
+    anthropic_base_url: str = "https://api.anthropic.com"
+    anthropic_model: str = "claude-opus-4-7"
 
     # Research APIs (Optional)
     semantic_scholar_api_key: Optional[str] = None

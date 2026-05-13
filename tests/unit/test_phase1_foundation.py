@@ -20,7 +20,9 @@ class TestConfig:
         """Test that config loads with default values."""
         from knowledgeweaver.config import settings
 
-        assert settings.llm_model == "claude-opus-4-7"
+        assert settings.anthropic_model == "claude-opus-4-7"
+        assert settings.anthropic_base_url is not None
+        assert settings.anthropic_base_url.startswith("https://")
         assert settings.concurrent_queries == 8
         assert settings.query_timeout_seconds == 300
         assert settings.log_level == "INFO"

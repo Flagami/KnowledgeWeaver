@@ -64,7 +64,29 @@ KnowledgeWeaver is a comprehensive research synthesis platform that:
 
 ## Quick Start
 
-### Installation
+### Installation (Recommended: Using `uv`)
+
+The fastest way to get started is using [uv](https://github.com/astral-sh/uv), a blazingly fast Python package installer:
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone the repository
+git clone https://github.com/yourusername/KnowledgeWeaver.git
+cd KnowledgeWeaver
+
+# Create virtual environment and install dependencies with uv
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+### Installation (Alternative: Using pip)
 
 ```bash
 # Clone the repository
@@ -88,23 +110,37 @@ cp .env.example .env
 Create a `.env` file with:
 
 ```env
-# Claude API
-ANTHROPIC_API_KEY=your_api_key_here
+# Claude API Configuration (Required)
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+ANTHROPIC_MODEL=claude-opus-4-7
 
-# LLM Model
-LLM_MODEL=claude-opus-4-7
+# Research APIs (Optional)
+SEMANTIC_SCHOLAR_API_KEY=
+CROSSREF_EMAIL=your-email@example.com
 
-# Concurrency
+# System Configuration
 CONCURRENT_QUERIES=8
 QUERY_TIMEOUT_SECONDS=300
-
-# Logging
 LOG_LEVEL=INFO
 
-# Output
-OUTPUT_DIR=./output
+# Storage
 DATABASE_PATH=./knowledgeweaver.db
+OUTPUT_DIR=./outputs
+
+# Development
+DEBUG=false
 ```
+
+**Configuration Variables:**
+- `ANTHROPIC_API_KEY` — Your Anthropic API key (required)
+- `ANTHROPIC_BASE_URL` — Anthropic API endpoint (default: https://api.anthropic.com)
+- `ANTHROPIC_MODEL` — Claude model to use (default: claude-opus-4-7)
+- `CONCURRENT_QUERIES` — Maximum concurrent queries (default: 8)
+- `QUERY_TIMEOUT_SECONDS` — Query timeout in seconds (default: 300)
+- `LOG_LEVEL` — Logging level (default: INFO)
+- `DATABASE_PATH` — SQLite database path (default: ./knowledgeweaver.db)
+- `OUTPUT_DIR` — Output directory for reports (default: ./outputs)
 
 ### Basic Usage
 

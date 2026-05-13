@@ -31,8 +31,11 @@ class PaperSummarizer:
         Args:
             model: Claude model to use (default: from config)
         """
-        self.model = model or settings.llm_model
-        self.client = Anthropic(api_key=settings.anthropic_api_key)
+        self.model = model or settings.anthropic_model
+        self.client = Anthropic(
+            api_key=settings.anthropic_api_key,
+            base_url=settings.anthropic_base_url,
+        )
         self.logger = logger
 
     async def summarize(
