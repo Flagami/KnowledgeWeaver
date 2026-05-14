@@ -33,12 +33,11 @@
     }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display',
-                   'Helvetica Neue', sans-serif;
+      font-family: var(--serif);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     header {
@@ -103,25 +102,30 @@
       background: var(--card);
       border-radius: var(--radius-card);
       box-shadow: var(--shadow-card);
-      padding: 28px;
-      margin-bottom: 20px;
+      padding: 32px;
+      margin-bottom: 24px;
     }
 
     .section-label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      font-family: var(--serif);
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-variant: small-caps;
+      letter-spacing: 0.04em;
+      text-transform: none;
       color: var(--muted);
       margin-bottom: 14px;
     }
 
     .explore-prompt {
-      font-size: 1.2rem;
-      font-weight: 600;
+      font-family: var(--display);
+      font-size: 1.8rem;
+      font-weight: 400;
+      font-style: italic;
       color: var(--text);
-      margin-bottom: 16px;
-      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
     }
 
     .input-row {
@@ -235,8 +239,10 @@
 
     /* ── Query list ── */
     .library-heading {
-      font-size: 1.05rem;
-      font-weight: 600;
+      font-family: var(--display);
+      font-size: 1.4rem;
+      font-weight: 400;
+      font-style: italic;
       color: var(--text);
       margin-bottom: 16px;
       letter-spacing: -0.01em;
