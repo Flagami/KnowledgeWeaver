@@ -44,18 +44,20 @@ class ArxivSource(BaseSource):
             else:
                 arxiv_query += "&sortBy=relevance"
 
+            self.logger.debug(f"arXiv search | query='{query}' | limit={limit} | sort={sort_by}")
             response = await self.client.get(f"{self.BASE_URL}?{arxiv_query}")
+            self.logger.debug(f"arXiv HTTP {response.status_code} | query='{query}'")
             response.raise_for_status()
 
             papers = self._parse_arxiv_response(response.text)
-            self.logger.info(f"Found {len(papers)} papers on arXiv for query: {query}")
+            self.logger.info(f"arXiv: {len(papers)} papers found | query='{query}'")
             return papers
 
         except httpx.HTTPError as e:
-            self.logger.error(f"arXiv API error: {e}")
+            self.logger.error(f"arXiv API error | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"arXiv search failed: {e}")
         except Exception as e:
-            self.logger.error(f"Unexpected error searching arXiv: {e}")
+            self.logger.error(f"Unexpected error searching arXiv | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"Unexpected error: {e}")
 
     async def fetch(self, paper: PaperMetadata) -> Optional[str]:
@@ -93,6 +95,7 @@ class ArxivSource(BaseSource):
                 published_match = re.search(r"<published>(.*?)</published>", entry)
 
                 if not all([title_match, id_match, published_match]):
+                    self.logger.debug("arXiv entry skipped: missing required fields")
                     continue
 
                 title = title_match.group(1).strip()
@@ -114,7 +117,7 @@ class ArxivSource(BaseSource):
                 papers.append(paper)
 
             except Exception as e:
-                self.logger.debug(f"Error parsing arXiv entry: {e}")
+                self.logger.warning(f"arXiv entry parse error: {type(e).__name__}: {e}")
                 continue
 
         return papers

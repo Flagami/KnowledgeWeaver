@@ -48,26 +48,29 @@ class PubmedSource(BaseSource):
             if sort_by == "date":
                 search_params["sort"] = "date"
 
+            self.logger.debug(f"PubMed search | query='{query}' | limit={limit}")
             response = await self.client.get(search_url, params=search_params)
+            self.logger.debug(f"PubMed HTTP {response.status_code} | query='{query}'")
             response.raise_for_status()
 
             search_data = response.json()
             pmids = search_data.get("esearchresult", {}).get("idlist", [])
 
             if not pmids:
-                self.logger.info(f"No papers found on PubMed for query: {query}")
+                self.logger.info(f"PubMed: 0 papers found | query='{query}'")
                 return []
 
+            self.logger.debug(f"PubMed: {len(pmids)} PMIDs found, fetching details")
             # Fetch details for each PMID
             papers = await self._fetch_paper_details(pmids)
-            self.logger.info(f"Found {len(papers)} papers on PubMed for query: {query}")
+            self.logger.info(f"PubMed: {len(papers)} papers found | query='{query}'")
             return papers
 
         except httpx.HTTPError as e:
-            self.logger.error(f"PubMed API error: {e}")
+            self.logger.error(f"PubMed API error | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"PubMed search failed: {e}")
         except Exception as e:
-            self.logger.error(f"Unexpected error searching PubMed: {e}")
+            self.logger.error(f"Unexpected error searching PubMed | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"Unexpected error: {e}")
 
     async def fetch(self, paper: PaperMetadata) -> Optional[str]:

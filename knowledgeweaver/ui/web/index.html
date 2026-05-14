@@ -8,23 +8,27 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #f0f2f5;
+      --bg: #f5f5f7;
       --card: #ffffff;
-      --primary: #4f46e5;
-      --primary-dark: #3730a3;
-      --success: #059669;
-      --error: #dc2626;
-      --warning: #d97706;
-      --text: #111827;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+      --primary: #0071e3;
+      --primary-hover: #0077ed;
+      --success: #34c759;
+      --success-text: #1a7f37;
+      --error: #ff3b30;
+      --warning: #ff9500;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --border: rgba(0,0,0,0.08);
+      --radius-card: 12px;
+      --radius-input: 8px;
+      --radius-badge: 20px;
+      --shadow-card: 0 2px 8px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-                   'Helvetica Neue', Arial, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+                   'Helvetica Neue', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -32,10 +36,12 @@
     }
 
     header {
-      background: var(--card);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       padding: 0 24px;
-      height: 56px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -43,28 +49,42 @@
       top: 0;
       z-index: 100;
     }
+
     .logo {
       display: flex;
       align-items: center;
       gap: 8px;
-      font-weight: 700;
-      font-size: 1.05rem;
+      font-weight: 600;
+      font-size: 0.95rem;
       color: var(--text);
       letter-spacing: -0.01em;
     }
     .logo-icon {
-      width: 28px; height: 28px;
-      background: linear-gradient(135deg, var(--primary), #818cf8);
+      width: 26px; height: 26px;
+      background: linear-gradient(135deg, #0071e3, #34aadc);
       border-radius: 7px;
       display: flex; align-items: center; justify-content: center;
       color: #fff;
-      font-size: 14px;
+      font-size: 13px;
       flex-shrink: 0;
     }
-    .header-sub {
-      font-size: 0.8rem;
-      color: var(--muted);
-      font-weight: 400;
+
+    .active-indicator {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--primary);
+      background: rgba(0,113,227,0.08);
+      padding: 3px 10px;
+      border-radius: var(--radius-badge);
+    }
+    .active-indicator .pulse-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 1.4s ease-in-out infinite;
     }
 
     main {
@@ -75,77 +95,80 @@
 
     .card {
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
       padding: 28px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .section-label {
-      font-size: 0.7rem;
+      font-size: 11px;
       font-weight: 600;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
+
     .explore-prompt {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 600;
       color: var(--text);
       margin-bottom: 16px;
+      letter-spacing: -0.02em;
     }
+
     .input-row {
       display: flex;
       gap: 10px;
       align-items: stretch;
     }
+
     .query-input {
       flex: 1;
-      padding: 12px 16px;
+      padding: 11px 16px;
       border: 1.5px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-input);
       font-size: 0.95rem;
+      font-family: inherit;
       color: var(--text);
       background: var(--bg);
       outline: none;
       transition: border-color .15s, box-shadow .15s;
     }
     .query-input:focus {
+      outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+      box-shadow: 0 0 0 3px rgba(0,113,227,0.25);
       background: #fff;
     }
     .query-input::placeholder { color: var(--muted); }
+
     .btn-explore {
-      padding: 12px 22px;
+      padding: 11px 22px;
       background: var(--primary);
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: var(--radius-badge);
       font-size: 0.9rem;
+      font-family: inherit;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
       transition: background .15s, transform .1s, opacity .15s;
       display: flex; align-items: center; gap: 6px;
     }
-    .btn-explore:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-explore:hover:not(:disabled) { background: var(--primary-hover); }
     .btn-explore:active:not(:disabled) { transform: scale(.97); }
-    .btn-explore:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-explore:disabled { opacity: .4; cursor: not-allowed; }
 
-    .cloud-section { margin-top: 20px; }
+    /* ── Bubble cloud ── */
+    .cloud-section { margin-top: 24px; }
     .cloud-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .cloud-title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--muted);
+      margin-bottom: 12px;
     }
     .cloud-refresh {
       font-size: 0.75rem;
@@ -153,101 +176,169 @@
       cursor: pointer;
       background: none;
       border: none;
-      padding: 2px 6px;
-      border-radius: 4px;
+      font-family: inherit;
+      padding: 3px 8px;
+      border-radius: 6px;
       transition: background .12s;
     }
-    .cloud-refresh:hover { background: rgba(79,70,229,.08); }
+    .cloud-refresh:hover { background: rgba(0,113,227,0.08); }
+
     #word-cloud {
-      min-height: 120px;
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 10px;
+      gap: 12px;
       align-items: center;
+      justify-content: center;
+      padding: 16px 0;
+      min-height: 160px;
     }
     .cloud-loading {
       color: var(--muted);
       font-size: 0.85rem;
       font-style: italic;
     }
-    .cloud-word {
+
+    .bubble {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
       cursor: pointer;
-      border-radius: 6px;
-      padding: 3px 8px;
       font-weight: 500;
-      transition: background .15s, transform .15s;
-      animation: float 3s ease-in-out infinite;
-      display: inline-block;
+      text-align: center;
+      line-height: 1.2;
+      padding: 4px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: bubbleFloat var(--dur) ease-in-out infinite;
+      animation-delay: var(--delay);
+      word-break: break-word;
+      hyphens: auto;
     }
-    .cloud-word:hover {
-      background: rgba(79,70,229,.1);
-      transform: translateY(-2px) scale(1.05) !important;
+    .bubble:hover {
+      transform: scale(1.12) !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
     }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-4px); }
+    .bubble:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 3px;
+    }
+    @keyframes bubbleFloat {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50%       { transform: translateY(-6px) scale(1.02); }
     }
 
     /* ── Query list ── */
     .library-heading {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 600;
       color: var(--text);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
     }
-    #query-list { display: flex; flex-direction: column; gap: 12px; }
+    #query-list { display: flex; flex-direction: column; }
     .empty-state {
       text-align: center;
       color: var(--muted);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       padding: 32px 0;
     }
+
     .query-card {
-      border: 1px solid var(--border);
-      border-radius: 8px;
       padding: 14px 16px;
-      background: var(--bg);
-      transition: box-shadow .15s;
+      background: transparent;
+      transition: background .12s;
+      position: relative;
+      overflow: hidden;
     }
-    .query-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .query-card + .query-card {
+      border-top: 1px solid rgba(0,0,0,0.06);
+    }
+    .query-card:hover { background: rgba(0,0,0,0.02); }
+
     .query-card-top {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
+      align-items: center;
+      gap: 10px;
     }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot-pending    { background: var(--muted); }
+    .status-dot-processing { background: var(--primary); animation: pulse 1.4s ease-in-out infinite; }
+    .status-dot-completed  { background: var(--success); }
+    .status-dot-failed     { background: var(--error); }
+
     .query-text {
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.93rem;
       color: var(--text);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 560px;
+      flex: 1;
+      min-width: 0;
     }
-    .query-meta {
-      margin-top: 6px;
-      font-size: 0.78rem;
+    .query-card-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .query-timestamp {
+      font-family: var(--mono);
+      font-size: 0.7rem;
       color: var(--muted);
+    }
+
+    .query-card-bottom {
+      margin-top: 6px;
+      padding-left: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
     .query-progress {
-      margin-top: 4px;
-      font-size: 0.78rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
       color: var(--muted);
-      font-style: italic;
     }
     .query-report {
-      margin-top: 6px;
       font-size: 0.82rem;
       color: var(--primary);
       text-decoration: none;
       font-weight: 500;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
     }
     .query-report:hover { text-decoration: underline; }
     .query-error {
-      margin-top: 4px;
-      font-size: 0.78rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
       color: var(--error);
+    }
+
+    .progress-bar-track {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: rgba(0,113,227,0.1);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      animation: progressIndeterminate 1.8s ease-in-out infinite;
+      transform-origin: left;
+    }
+    @keyframes progressIndeterminate {
+      0%   { transform: scaleX(0); margin-left: 0; }
+      50%  { transform: scaleX(0.6); margin-left: 20%; }
+      100% { transform: scaleX(0); margin-left: 100%; }
     }
 
     /* ── Status badges ── */
@@ -256,22 +347,18 @@
       align-items: center;
       gap: 5px;
       padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.75rem;
+      border-radius: var(--radius-badge);
+      font-family: var(--mono);
+      font-size: 0.7rem;
       font-weight: 600;
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .badge-queued   { background: #f3f4f6; color: var(--muted); }
-    .badge-processing { background: #eef2ff; color: var(--primary); }
-    .badge-done     { background: #d1fae5; color: var(--success); }
-    .badge-failed   { background: #fee2e2; color: var(--error); }
-    .pulse-dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--primary);
-      animation: pulse 1.4s ease-in-out infinite;
-    }
+    .badge-pending    { background: rgba(110,110,115,0.12); color: var(--muted); }
+    .badge-processing { background: rgba(0,113,227,0.1);   color: var(--primary); }
+    .badge-completed  { background: rgba(52,199,89,0.12);  color: var(--success-text); }
+    .badge-failed     { background: rgba(255,59,48,0.1);   color: var(--error); }
+
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50%       { opacity: .4; transform: scale(.7); }
@@ -290,9 +377,9 @@
     }
     .toast {
       pointer-events: auto;
-      padding: 12px 18px;
-      border-radius: 8px;
-      font-size: 0.875rem;
+      padding: 11px 16px;
+      border-radius: var(--radius-input);
+      font-size: 0.85rem;
       font-weight: 500;
       color: #fff;
       max-width: 320px;
@@ -302,7 +389,7 @@
       align-items: center;
       gap: 8px;
     }
-    .toast.toast-success { background: var(--success); }
+    .toast.toast-success { background: #1a7f37; }
     .toast.toast-error   { background: var(--error); }
     .toast.toast-info    { background: var(--primary); }
     .toast.toast-hide    { animation: slideOut .25s ease-in forwards; }
@@ -320,10 +407,13 @@
 
 <header>
   <div class="logo">
-    <div class="logo-icon" aria-hidden="true">&#x2728;</div>
+    <div class="logo-icon" aria-hidden="true">&#x25C8;</div>
     <span>KnowledgeWeaver</span>
   </div>
-  <span class="header-sub">AI Research Synthesis</span>
+  <span class="active-indicator" id="activeIndicator">
+    <span class="pulse-dot" aria-hidden="true"></span>
+    <span id="activeCount">0</span> processing
+  </span>
 </header>
 
 <main>
@@ -346,7 +436,7 @@
     </div>
     <div class="cloud-section">
       <div class="cloud-header">
-        <span class="cloud-title">Suggested Topics</span>
+        <span class="section-label" style="margin-bottom:0">Suggested Topics</span>
         <button class="cloud-refresh" id="btn-refresh-cloud" aria-label="Refresh suggestions">
           &#x21bb; Refresh
         </button>
@@ -404,9 +494,38 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
-// ── Word cloud ────────────────────────────────────────────────────────────────
+// ── Active indicator ──────────────────────────────────────────────────────────
 
-const CLOUD_COLORS = ['#4f46e5','#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
+function updateActiveIndicator(queries) {
+  const count = (queries || []).filter(q => q.status === 'processing').length;
+  const el = document.getElementById('activeIndicator');
+  const countEl = document.getElementById('activeCount');
+  if (count > 0) {
+    countEl.textContent = count;
+    el.style.display = 'inline-flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── Bubble cloud ──────────────────────────────────────────────────────────────
+
+const BUBBLE_SCHEMES = [
+  { bg: '#e8f0fe', text: '#1a56db' },
+  { bg: '#fce7f3', text: '#9d174d' },
+  { bg: '#d1fae5', text: '#065f46' },
+  { bg: '#fef3c7', text: '#92400e' },
+  { bg: '#ede9fe', text: '#5b21b6' },
+  { bg: '#e0f2fe', text: '#0c4a6e' },
+];
+
+function bubbleSizeForWeight(w) {
+  if (w <= 2) return { size: 64, font: '0.65rem' };
+  if (w <= 4) return { size: 76, font: '0.72rem' };
+  if (w <= 6) return { size: 90, font: '0.8rem' };
+  if (w <= 8) return { size: 108, font: '0.88rem' };
+  return { size: 128, font: '0.95rem' };
+}
 
 function renderWordCloud(keywords) {
   const container = document.getElementById('word-cloud');
@@ -415,30 +534,37 @@ function renderWordCloud(keywords) {
     container.innerHTML = '<span class="cloud-loading">No suggestions available.</span>';
     return;
   }
-  const weights = keywords.map(k => k.weight);
-  const minW = Math.min(...weights);
-  const maxW = Math.max(...weights);
   keywords.forEach((kw, i) => {
-    const t = maxW === minW ? 0.5 : (kw.weight - minW) / (maxW - minW);
-    const fontSize = 0.75 + t * (2 - 0.75);
-    const color = CLOUD_COLORS[i % CLOUD_COLORS.length];
-    const delay = (Math.random() * 2).toFixed(2);
-    const span = document.createElement('span');
-    span.className = 'cloud-word';
-    span.setAttribute('role', 'listitem');
-    span.setAttribute('tabindex', '0');
-    span.setAttribute('aria-label', `Suggested topic: ${kw.word}`);
-    span.textContent = kw.word;
-    span.style.cssText = `font-size:${fontSize}rem;color:${color};animation-delay:${delay}s`;
-    span.addEventListener('click', () => {
+    const scheme = BUBBLE_SCHEMES[i % BUBBLE_SCHEMES.length];
+    const { size, font } = bubbleSizeForWeight(kw.weight || 5);
+    const dur = (2.5 + Math.random() * 1.5).toFixed(2) + 's';
+    const delay = (Math.random() * 2).toFixed(2) + 's';
+
+    const bubble = document.createElement('span');
+    bubble.className = 'bubble';
+    bubble.setAttribute('role', 'listitem');
+    bubble.setAttribute('tabindex', '0');
+    bubble.setAttribute('aria-label', `Suggested topic: ${kw.word}`);
+    bubble.textContent = kw.word;
+    bubble.style.cssText = [
+      `width:${size}px`,
+      `height:${size}px`,
+      `background:${scheme.bg}`,
+      `color:${scheme.text}`,
+      `font-size:${font}`,
+      `--dur:${dur}`,
+      `--delay:${delay}`,
+    ].join(';');
+
+    bubble.addEventListener('click', () => {
       document.getElementById('query-input').value = kw.word;
       document.getElementById('query-input').dispatchEvent(new Event('input'));
       document.getElementById('query-input').focus();
     });
-    span.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); span.click(); }
+    bubble.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bubble.click(); }
     });
-    container.appendChild(span);
+    container.appendChild(bubble);
   });
 }
 
@@ -458,23 +584,19 @@ async function fetchKeywords() {
 
 function buildBadge(status) {
   const badge = document.createElement('span');
-  badge.className = 'badge';
+  badge.className = `badge badge-${status === 'completed' ? 'completed' : status === 'processing' ? 'processing' : status === 'failed' ? 'failed' : 'pending'}`;
   if (status === 'pending') {
-    badge.classList.add('badge-queued');
-    badge.textContent = 'Queued';
+    badge.textContent = 'pending';
   } else if (status === 'processing') {
-    badge.classList.add('badge-processing');
     const dot = document.createElement('span');
     dot.className = 'pulse-dot';
     dot.setAttribute('aria-hidden', 'true');
     badge.appendChild(dot);
-    badge.appendChild(document.createTextNode('Researching...'));
+    badge.appendChild(document.createTextNode('processing'));
   } else if (status === 'completed') {
-    badge.classList.add('badge-done');
-    badge.textContent = 'Done';
+    badge.textContent = 'done';
   } else {
-    badge.classList.add('badge-failed');
-    badge.textContent = 'Failed';
+    badge.textContent = 'failed';
   }
   return badge;
 }
@@ -485,46 +607,80 @@ function renderQueryCard(query) {
   card.setAttribute('role', 'listitem');
   card.dataset.queryId = query.query_id;
 
+  // Top row: dot + text + badge + timestamp
   const top = document.createElement('div');
   top.className = 'query-card-top';
+
+  const dot = document.createElement('span');
+  dot.className = `status-dot status-dot-${query.status === 'completed' ? 'completed' : query.status === 'processing' ? 'processing' : query.status === 'failed' ? 'failed' : 'pending'}`;
+  dot.setAttribute('aria-hidden', 'true');
 
   const textEl = document.createElement('div');
   textEl.className = 'query-text';
   textEl.textContent = truncate(query.query_text, 80);
   textEl.title = query.query_text;
 
+  const right = document.createElement('div');
+  right.className = 'query-card-right';
+
+  right.appendChild(buildBadge(query.status));
+
+  if (query.created_at) {
+    const ts = document.createElement('span');
+    ts.className = 'query-timestamp';
+    ts.textContent = timeAgo(query.created_at);
+    right.appendChild(ts);
+  }
+
+  top.appendChild(dot);
   top.appendChild(textEl);
-  top.appendChild(buildBadge(query.status));
+  top.appendChild(right);
   card.appendChild(top);
 
-  const meta = document.createElement('div');
-  meta.className = 'query-meta';
-  const ts = query.created_at ? timeAgo(query.created_at) : '';
-  meta.textContent = query.domain ? `${query.domain} · ${ts}` : ts;
-  card.appendChild(meta);
+  // Bottom row: progress / report / error
+  const hasBottom = (query.status === 'processing' && query.progress_message)
+    || (query.status === 'completed' && query.result_path)
+    || query.status === 'failed';
 
-  if (query.status === 'processing' && query.progress_message) {
-    const prog = document.createElement('div');
-    prog.className = 'query-progress';
-    prog.textContent = query.progress_message;
-    card.appendChild(prog);
+  if (hasBottom) {
+    const bottom = document.createElement('div');
+    bottom.className = 'query-card-bottom';
+
+    if (query.status === 'processing' && query.progress_message) {
+      const prog = document.createElement('span');
+      prog.className = 'query-progress';
+      prog.textContent = query.progress_message;
+      bottom.appendChild(prog);
+    }
+
+    if (query.status === 'completed' && query.result_path) {
+      const link = document.createElement('a');
+      link.className = 'query-report';
+      link.href = `/outputs/${query.result_path}`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'Open Report ↗';
+      bottom.appendChild(link);
+    }
+
+    if (query.status === 'failed') {
+      const errEl = document.createElement('span');
+      errEl.className = 'query-error';
+      errEl.textContent = query.progress_message || 'Research failed. Please try again.';
+      bottom.appendChild(errEl);
+    }
+
+    card.appendChild(bottom);
   }
 
-  if (query.status === 'completed' && query.result_path) {
-    const link = document.createElement('a');
-    link.className = 'query-report';
-    link.href = `/outputs/${query.result_path}`;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'View Report →';
-    card.appendChild(link);
-  }
-
-  if (query.status === 'failed') {
-    const errEl = document.createElement('div');
-    errEl.className = 'query-error';
-    errEl.textContent = query.progress_message || 'Research failed. Please try again.';
-    card.appendChild(errEl);
+  // Animated progress bar for processing
+  if (query.status === 'processing') {
+    const track = document.createElement('div');
+    track.className = 'progress-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'progress-bar-fill';
+    track.appendChild(fill);
+    card.appendChild(track);
   }
 
   return card;
@@ -552,7 +708,6 @@ async function fetchQueries() {
     const res = await fetch('/api/queries');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const queries = await res.json();
-    // Detect status transitions
     queries.forEach(q => {
       const prev = prevStatuses[q.query_id];
       if (prev && prev !== 'completed' && q.status === 'completed') {
@@ -561,6 +716,7 @@ async function fetchQueries() {
       prevStatuses[q.query_id] = q.status;
     });
     renderQueryList(queries);
+    updateActiveIndicator(queries);
   } catch (err) {
     showToast('Could not load research history.', 'error');
   }
@@ -612,11 +768,9 @@ function init() {
 
   document.getElementById('btn-refresh-cloud').addEventListener('click', fetchKeywords);
 
-  // Initial data load
   fetchKeywords();
   fetchQueries();
 
-  // Polling
   setInterval(fetchQueries, 3000);
   setInterval(fetchKeywords, 60000);
 }

@@ -54,7 +54,12 @@ class PaperSummarizer:
         Returns:
             Paper summary
         """
+        short_title = paper.title[:60]
         try:
+            self.logger.debug(
+                f"Summarizing: '{short_title}'"
+                f" | depth={depth} | model={self.model} | input_chars={len(text)}"
+            )
             # Limit text to first 8000 characters
             text_excerpt = text[:8000]
 
@@ -66,12 +71,20 @@ class PaperSummarizer:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            summary = self._parse_summary_response(response.content[0].text, paper)
-            self.logger.debug(f"Summarized paper: {paper.source}:{paper.source_id}")
+            response_text = response.content[0].text
+            summary = self._parse_summary_response(response_text, paper)
+            self.logger.debug(
+                f"Summarize OK: '{short_title}'"
+                f" | response_chars={len(response_text)}"
+                f" | key_points={len(summary.key_points)}"
+            )
             return summary
 
         except Exception as e:
-            self.logger.error(f"Error summarizing paper: {e}")
+            self.logger.warning(
+                f"Summarize FAILED: '{short_title}'"
+                f" | {type(e).__name__}: {e}"
+            )
             # Fallback: use abstract as summary
             return self._create_fallback_summary(paper)
 

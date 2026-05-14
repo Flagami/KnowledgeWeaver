@@ -51,6 +51,11 @@ class InsightGenerator:
             Generated insights
         """
         try:
+            synthesis_len = len(synthesis.synthesis)
+            self.logger.info(
+                f"Generating insights | synthesis_chars={synthesis_len}"
+                f" | model={self.model}"
+            )
             prompt = self._build_insight_prompt(synthesis, query)
 
             response = self.client.messages.create(
@@ -59,12 +64,20 @@ class InsightGenerator:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            insights = self._parse_insight_response(response.content[0].text)
-            self.logger.debug("Generated insights from synthesis")
+            response_text = response.content[0].text
+            insights = self._parse_insight_response(response_text)
+            self.logger.info(
+                f"Insights generated"
+                f" | insights={len(insights.insights)}"
+                f" | future_directions={len(insights.future_directions)}"
+                f" | open_questions={len(insights.open_questions)}"
+            )
             return insights
 
         except Exception as e:
-            self.logger.error(f"Error generating insights: {e}")
+            self.logger.warning(
+                f"Insight generation FAILED: {type(e).__name__}: {e}"
+            )
             # Fallback: extract insights from synthesis
             return self._create_fallback_insights(synthesis)
 

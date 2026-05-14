@@ -57,6 +57,9 @@ class PaperSynthesizer:
             raise ValueError("No papers to synthesize")
 
         try:
+            self.logger.info(
+                f"Synthesizing {len(papers)} summaries | depth={depth} | model={self.model}"
+            )
             prompt = self._build_synthesis_prompt(papers, depth)
 
             response = self.client.messages.create(
@@ -65,12 +68,20 @@ class PaperSynthesizer:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            result = self._parse_synthesis_response(response.content[0].text)
-            self.logger.debug(f"Synthesized {len(papers)} papers")
+            response_text = response.content[0].text
+            result = self._parse_synthesis_response(response_text)
+            self.logger.info(
+                f"Synthesis OK | papers={len(papers)}"
+                f" | output_chars={len(result.synthesis)}"
+                f" | connections={len(result.connections)}"
+                f" | citations={len(result.citations)}"
+            )
             return result
 
         except Exception as e:
-            self.logger.error(f"Error synthesizing papers: {e}")
+            self.logger.warning(
+                f"Synthesis FAILED: {type(e).__name__}: {e}"
+            )
 
             # Retry with simpler prompt
             if max_retries > 0:

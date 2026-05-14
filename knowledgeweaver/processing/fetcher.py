@@ -35,29 +35,47 @@ class PaperFetcher:
         Returns:
             Extracted text or None if unavailable
         """
+        paper_id = f"{paper.source}:{paper.source_id}"
         try:
             # Check cache first
             cached_text = self._get_cached_text(paper)
             if cached_text:
-                self.logger.debug(f"Using cached text for {paper.source}:{paper.source_id}")
+                self.logger.debug(
+                    f"Cache HIT: {paper_id} | chars={len(cached_text)}"
+                )
                 return cached_text
+
+            self.logger.debug(f"Cache MISS: {paper_id}")
 
             # Try to fetch from URL
             if paper.url:
+                self.logger.debug(f"Fetching URL: {paper.url} | paper={paper_id}")
                 text = await self._fetch_from_url(paper.url)
                 if text:
                     self._cache_text(paper, text)
+                    self.logger.debug(
+                        f"Fetch OK: {paper_id} | chars={len(text)}"
+                    )
                     return text
+                else:
+                    self.logger.warning(
+                        f"Fetch returned no text: {paper_id} | url={paper.url}"
+                    )
 
             # Fallback to abstract
             if paper.abstract:
-                self.logger.debug(f"Using abstract for {paper.source}:{paper.source_id}")
+                self.logger.debug(
+                    f"Using abstract fallback: {paper_id} | chars={len(paper.abstract)}"
+                )
                 return paper.abstract
 
+            self.logger.warning(f"No text available for: {paper_id}")
             return None
 
         except Exception as e:
-            self.logger.error(f"Error fetching paper {paper.source}:{paper.source_id}: {e}")
+            self.logger.error(
+                f"Error fetching paper {paper_id}: {type(e).__name__}: {e}"
+            )
             return None
 
     async def _fetch_from_url(self, url: str) -> Optional[str]:
@@ -71,20 +89,51 @@ class PaperFetcher:
         """
         try:
             response = await self.client.get(url, follow_redirects=True)
+            self.logger.debug(
+                f"HTTP {response.status_code} for URL: {url}"
+            )
             response.raise_for_status()
 
             content_type = response.headers.get("content-type", "").lower()
 
             # Handle PDF
             if "pdf" in content_type or url.endswith(".pdf"):
-                return self._extract_pdf_text(response.content)
+                text = self._extract_pdf_text(response.content)
+                if text:
+                    self.logger.debug(
+                        f"PDF extracted: {len(text)} chars | url={url}"
+                    )
+                else:
+                    self.logger.warning(f"PDF extraction returned no text | url={url}")
+                return text
 
             # Handle HTML
             if "html" in content_type or "text" in content_type:
-                return self._extract_html_text(response.text)
+                text = self._extract_html_text(response.text)
+                if text:
+                    self.logger.debug(
+                        f"HTML extracted: {len(text)} chars | url={url}"
+                    )
+                else:
+                    self.logger.warning(f"HTML extraction returned no text | url={url}")
+                return text
 
+            self.logger.warning(
+                f"Unhandled content-type '{content_type}' | url={url}"
+            )
             return None
 
+        except httpx.TimeoutException as e:
+            self.logger.warning(f"Timeout fetching URL: {url} | {e}")
+            return None
+        except httpx.ConnectError as e:
+            self.logger.warning(f"Connection error fetching URL: {url} | {e}")
+            return None
+        except httpx.HTTPStatusError as e:
+            self.logger.warning(
+                f"HTTP {e.response.status_code} error fetching URL: {url} | {e}"
+            )
+            return None
         except httpx.HTTPError as e:
             self.logger.debug(f"HTTP error fetching {url}: {e}")
             return None
@@ -106,10 +155,15 @@ class PaperFetcher:
                 text = ""
                 for page in pdf.pages[:10]:  # Limit to first 10 pages
                     text += page.extract_text() or ""
-                return text.strip() if text else None
+                result = text.strip() if text else None
+                if result:
+                    self.logger.debug(f"PDF extraction OK | pages={len(pdf.pages)} | chars={len(result)}")
+                else:
+                    self.logger.warning("PDF extraction produced no text")
+                return result
 
         except Exception as e:
-            self.logger.debug(f"Error extracting PDF text: {e}")
+            self.logger.warning(f"PDF extraction failed: {type(e).__name__}: {e}")
             return None
 
     def _extract_html_text(self, html_content: str) -> Optional[str]:

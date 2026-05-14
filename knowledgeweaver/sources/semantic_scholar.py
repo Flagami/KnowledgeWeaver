@@ -46,21 +46,23 @@ class SemanticScholarSource(BaseSource):
             else:
                 params["sort"] = "relevance"
 
+            self.logger.debug(f"Semantic Scholar search | query='{query}' | limit={limit}")
             response = await self.client.get(self.BASE_URL, params=params)
+            self.logger.debug(f"Semantic Scholar HTTP {response.status_code} | query='{query}'")
             response.raise_for_status()
 
             data = response.json()
             papers = self._parse_semantic_scholar_response(data)
             self.logger.info(
-                f"Found {len(papers)} papers on Semantic Scholar for query: {query}"
+                f"Semantic Scholar: {len(papers)} papers found | query='{query}'"
             )
             return papers
 
         except httpx.HTTPError as e:
-            self.logger.error(f"Semantic Scholar API error: {e}")
+            self.logger.error(f"Semantic Scholar API error | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"Semantic Scholar search failed: {e}")
         except Exception as e:
-            self.logger.error(f"Unexpected error searching Semantic Scholar: {e}")
+            self.logger.error(f"Unexpected error searching Semantic Scholar | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"Unexpected error: {e}")
 
     async def fetch(self, paper: PaperMetadata) -> Optional[str]:

@@ -47,19 +47,21 @@ class CrossrefSource(BaseSource):
             else:
                 params["sort"] = "relevance"
 
+            self.logger.debug(f"CrossRef search | query='{query}' | limit={limit}")
             response = await self.client.get(self.BASE_URL, params=params)
+            self.logger.debug(f"CrossRef HTTP {response.status_code} | query='{query}'")
             response.raise_for_status()
 
             data = response.json()
             papers = self._parse_crossref_response(data)
-            self.logger.info(f"Found {len(papers)} papers on CrossRef for query: {query}")
+            self.logger.info(f"CrossRef: {len(papers)} papers found | query='{query}'")
             return papers
 
         except httpx.HTTPError as e:
-            self.logger.error(f"CrossRef API error: {e}")
+            self.logger.error(f"CrossRef API error | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"CrossRef search failed: {e}")
         except Exception as e:
-            self.logger.error(f"Unexpected error searching CrossRef: {e}")
+            self.logger.error(f"Unexpected error searching CrossRef | query='{query}' | {type(e).__name__}: {e}")
             raise SourceError(f"Unexpected error: {e}")
 
     async def fetch(self, paper: PaperMetadata) -> Optional[str]:
