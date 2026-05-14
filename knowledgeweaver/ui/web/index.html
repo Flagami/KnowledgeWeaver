@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KnowledgeWeaver — AI Research Synthesis</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --success: #059669;
+      --error: #dc2626;
+      --warning: #d97706;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                   'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--primary), #818cf8);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .header-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .explore-prompt {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .query-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .query-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+      background: #fff;
+    }
+    .query-input::placeholder { color: var(--muted); }
+    .btn-explore {
+      padding: 12px 22px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, transform .1s, opacity .15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-explore:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-explore:active:not(:disabled) { transform: scale(.97); }
+    .btn-explore:disabled { opacity: .45; cursor: not-allowed; }
+
+    .cloud-section { margin-top: 20px; }
+    .cloud-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .cloud-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .cloud-refresh {
+      font-size: 0.75rem;
+      color: var(--primary);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background .12s;
+    }
+    .cloud-refresh:hover { background: rgba(79,70,229,.08); }
+    #word-cloud {
+      min-height: 120px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      align-items: center;
+    }
+    .cloud-loading {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+    .cloud-word {
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-weight: 500;
+      transition: background .15s, transform .15s;
+      animation: float 3s ease-in-out infinite;
+      display: inline-block;
+    }
+    .cloud-word:hover {
+      background: rgba(79,70,229,.1);
+      transform: translateY(-2px) scale(1.05) !important;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-4px); }
+    }
+
+    /* ── Query list ── */
+    .library-heading {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    #query-list { display: flex; flex-direction: column; gap: 12px; }
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 32px 0;
+    }
+    .query-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      background: var(--bg);
+      transition: box-shadow .15s;
+    }
+    .query-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .query-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .query-text {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 560px;
+    }
+    .query-meta {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .query-progress {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .query-report {
+      margin-top: 6px;
+      font-size: 0.82rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .query-report:hover { text-decoration: underline; }
+    .query-error {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: var(--error);
+    }
+
+    /* ── Status badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-queued   { background: #f3f4f6; color: var(--muted); }
+    .badge-processing { background: #eef2ff; color: var(--primary); }
+    .badge-done     { background: #d1fae5; color: var(--success); }
+    .badge-failed   { background: #fee2e2; color: var(--error); }
+    .pulse-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .4; transform: scale(.7); }
+    }
+
+    /* ── Toast notifications ── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #fff;
+      max-width: 320px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
+      animation: slideIn .25s ease-out forwards;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.toast-success { background: var(--success); }
+    .toast.toast-error   { background: var(--error); }
+    .toast.toast-info    { background: var(--primary); }
+    .toast.toast-hide    { animation: slideOut .25s ease-in forwards; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideOut {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(60px); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon" aria-hidden="true">&#x2728;</div>
+    <span>KnowledgeWeaver</span>
+  </div>
+  <span class="header-sub">AI Research Synthesis</span>
+</header>
+
+<main>
+  <!-- Explore card -->
+  <section class="card" aria-labelledby="explore-heading">
+    <p class="section-label">Explore</p>
+    <h1 class="explore-prompt" id="explore-heading">What do you want to explore?</h1>
+    <div class="input-row">
+      <input
+        id="query-input"
+        class="query-input"
+        type="text"
+        placeholder="e.g. quantum computing, CRISPR, climate change..."
+        aria-label="Research topic"
+        autocomplete="off"
+      />
+      <button id="btn-explore" class="btn-explore" disabled aria-label="Start research">
+        Explore &#x2192;
+      </button>
+    </div>
+    <div class="cloud-section">
+      <div class="cloud-header">
+        <span class="cloud-title">Suggested Topics</span>
+        <button class="cloud-refresh" id="btn-refresh-cloud" aria-label="Refresh suggestions">
+          &#x21bb; Refresh
+        </button>
+      </div>
+      <div id="word-cloud" role="list" aria-label="Suggested topics">
+        <span class="cloud-loading">Loading suggestions...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Research Library card -->
+  <section class="card" aria-labelledby="library-heading">
+    <p class="section-label">Research Library</p>
+    <h2 class="library-heading" id="library-heading">Research History</h2>
+    <div id="query-list" role="list" aria-live="polite" aria-label="Research history">
+      <p class="empty-state">No research yet. Enter a topic above to get started.</p>
+    </div>
+  </section>
+</main>
+
+<div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+<script>
+'use strict';
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+
+function timeAgo(isoString) {
+  const date = new Date(isoString);
+  const now = new Date();
+  const secs = Math.floor((now - date) / 1000);
+  if (secs < 60)  return 'just now';
+  if (secs < 3600) return `${Math.floor(secs / 60)} min ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)} hour${Math.floor(secs/3600)>1?'s':''} ago`;
+  return date.toLocaleDateString();
+}
+
+function truncate(str, max) {
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.setAttribute('role', 'alert');
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  toast.innerHTML = `<span aria-hidden="true">${icon}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('toast-hide');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  }, 4000);
+}
+
+// ── Word cloud ────────────────────────────────────────────────────────────────
+
+const CLOUD_COLORS = ['#4f46e5','#7c3aed','#059669','#d97706','#dc2626','#0891b2'];
+
+function renderWordCloud(keywords) {
+  const container = document.getElementById('word-cloud');
+  container.innerHTML = '';
+  if (!keywords || keywords.length === 0) {
+    container.innerHTML = '<span class="cloud-loading">No suggestions available.</span>';
+    return;
+  }
+  const weights = keywords.map(k => k.weight);
+  const minW = Math.min(...weights);
+  const maxW = Math.max(...weights);
+  keywords.forEach((kw, i) => {
+    const t = maxW === minW ? 0.5 : (kw.weight - minW) / (maxW - minW);
+    const fontSize = 0.75 + t * (2 - 0.75);
+    const color = CLOUD_COLORS[i % CLOUD_COLORS.length];
+    const delay = (Math.random() * 2).toFixed(2);
+    const span = document.createElement('span');
+    span.className = 'cloud-word';
+    span.setAttribute('role', 'listitem');
+    span.setAttribute('tabindex', '0');
+    span.setAttribute('aria-label', `Suggested topic: ${kw.word}`);
+    span.textContent = kw.word;
+    span.style.cssText = `font-size:${fontSize}rem;color:${color};animation-delay:${delay}s`;
+    span.addEventListener('click', () => {
+      document.getElementById('query-input').value = kw.word;
+      document.getElementById('query-input').dispatchEvent(new Event('input'));
+      document.getElementById('query-input').focus();
+    });
+    span.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); span.click(); }
+    });
+    container.appendChild(span);
+  });
+}
+
+async function fetchKeywords() {
+  try {
+    const res = await fetch('/api/recommendations');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderWordCloud(data.keywords || []);
+  } catch (err) {
+    document.getElementById('word-cloud').innerHTML =
+      '<span class="cloud-loading">Could not load suggestions.</span>';
+  }
+}
+
+// ── Query rendering ───────────────────────────────────────────────────────────
+
+function buildBadge(status) {
+  const badge = document.createElement('span');
+  badge.className = 'badge';
+  if (status === 'pending') {
+    badge.classList.add('badge-queued');
+    badge.textContent = 'Queued';
+  } else if (status === 'processing') {
+    badge.classList.add('badge-processing');
+    const dot = document.createElement('span');
+    dot.className = 'pulse-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    badge.appendChild(dot);
+    badge.appendChild(document.createTextNode('Researching...'));
+  } else if (status === 'completed') {
+    badge.classList.add('badge-done');
+    badge.textContent = 'Done';
+  } else {
+    badge.classList.add('badge-failed');
+    badge.textContent = 'Failed';
+  }
+  return badge;
+}
+
+function renderQueryCard(query) {
+  const card = document.createElement('div');
+  card.className = 'query-card';
+  card.setAttribute('role', 'listitem');
+  card.dataset.queryId = query.query_id;
+
+  const top = document.createElement('div');
+  top.className = 'query-card-top';
+
+  const textEl = document.createElement('div');
+  textEl.className = 'query-text';
+  textEl.textContent = truncate(query.query_text, 80);
+  textEl.title = query.query_text;
+
+  top.appendChild(textEl);
+  top.appendChild(buildBadge(query.status));
+  card.appendChild(top);
+
+  const meta = document.createElement('div');
+  meta.className = 'query-meta';
+  const ts = query.created_at ? timeAgo(query.created_at) : '';
+  meta.textContent = query.domain ? `${query.domain} · ${ts}` : ts;
+  card.appendChild(meta);
+
+  if (query.status === 'processing' && query.progress_message) {
+    const prog = document.createElement('div');
+    prog.className = 'query-progress';
+    prog.textContent = query.progress_message;
+    card.appendChild(prog);
+  }
+
+  if (query.status === 'completed' && query.result_path) {
+    const link = document.createElement('a');
+    link.className = 'query-report';
+    link.href = `/outputs/${query.result_path}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'View Report →';
+    card.appendChild(link);
+  }
+
+  if (query.status === 'failed') {
+    const errEl = document.createElement('div');
+    errEl.className = 'query-error';
+    errEl.textContent = query.progress_message || 'Research failed. Please try again.';
+    card.appendChild(errEl);
+  }
+
+  return card;
+}
+
+function renderQueryList(queries) {
+  const list = document.getElementById('query-list');
+  if (!queries || queries.length === 0) {
+    list.innerHTML = '<p class="empty-state">No research yet. Enter a topic above to get started.</p>';
+    return;
+  }
+  const sorted = [...queries].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
+  list.innerHTML = '';
+  sorted.forEach(q => list.appendChild(renderQueryCard(q)));
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+
+let prevStatuses = {};
+
+async function fetchQueries() {
+  try {
+    const res = await fetch('/api/queries');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const queries = await res.json();
+    // Detect status transitions
+    queries.forEach(q => {
+      const prev = prevStatuses[q.query_id];
+      if (prev && prev !== 'completed' && q.status === 'completed') {
+        showToast(`Research complete: ${truncate(q.query_text, 40)}`, 'success');
+      }
+      prevStatuses[q.query_id] = q.status;
+    });
+    renderQueryList(queries);
+  } catch (err) {
+    showToast('Could not load research history.', 'error');
+  }
+}
+
+async function submitQuery(queryText) {
+  const btn = document.getElementById('btn-explore');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/queries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query_text: queryText, depth: 'medium' }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    prevStatuses[data.query_id] = data.status;
+    document.getElementById('query-input').value = '';
+    document.getElementById('query-input').dispatchEvent(new Event('input'));
+    showToast('Research started!', 'success');
+    await fetchQueries();
+  } catch (err) {
+    showToast('Failed to start research. Please try again.', 'error');
+  } finally {
+    const input = document.getElementById('query-input');
+    btn.disabled = input.value.trim() === '';
+  }
+}
+
+// ── Init & polling ────────────────────────────────────────────────────────────
+
+function init() {
+  const input = document.getElementById('query-input');
+  const btn   = document.getElementById('btn-explore');
+
+  input.addEventListener('input', () => {
+    btn.disabled = input.value.trim() === '';
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && input.value.trim() !== '') {
+      submitQuery(input.value.trim());
+    }
+  });
+
+  btn.addEventListener('click', () => {
+    if (input.value.trim() !== '') submitQuery(input.value.trim());
+  });
+
+  document.getElementById('btn-refresh-cloud').addEventListener('click', fetchKeywords);
+
+  // Initial data load
+  fetchKeywords();
+  fetchQueries();
+
+  // Polling
+  setInterval(fetchQueries, 3000);
+  setInterval(fetchKeywords, 60000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

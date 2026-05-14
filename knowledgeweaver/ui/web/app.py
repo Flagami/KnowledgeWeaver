@@ -7,26 +7,62 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from knowledgeweaver.core.synthesis_pipeline import SynthesisPipeline
-from knowledgeweaver.core.query_manager import Query, QueryManager
-from knowledgeweaver.learning.preference_tracker import PreferenceTracker
+from knowledgeweaver.core.query_manager import Query
+from knowledgeweaver.learning.keyword_recommender import KeywordRecommender
 from knowledgeweaver.learning.feedback_collector import FeedbackCollector
-from knowledgeweaver.learning.preference_updater import PreferenceUpdater
+from knowledgeweaver.config import settings
 from knowledgeweaver.utils.logger import logger
 
-# Initialize FastAPI app
+# ---------------------------------------------------------------------------
+# Global in-memory stores
+# ---------------------------------------------------------------------------
+
+# query_id -> dict with keys: query_id, query_text, domain, status,
+#   created_at (ISO str), started_at, completed_at, result_path (filename only),
+#   error_message, progress_message, processing_time, user_rating, feedback_text
+queries_store: dict[str, dict] = {}
+
+# query_id -> list of progress message strings
+progress_store: dict[str, list[str]] = {}
+
+# Semaphore to cap concurrent pipeline runs
+_pipeline_semaphore = asyncio.Semaphore(4)
+
+# ---------------------------------------------------------------------------
+# Module-level singletons
+# ---------------------------------------------------------------------------
+
+pipeline = SynthesisPipeline()
+feedback_collector = FeedbackCollector()
+
+# ---------------------------------------------------------------------------
+# Seed keywords returned when the recommender DB is not yet available
+# ---------------------------------------------------------------------------
+
+_SEED_KEYWORDS = [
+    {"word": "machine learning", "weight": 10, "count": 0},
+    {"word": "deep learning", "weight": 9, "count": 0},
+    {"word": "neural networks", "weight": 9, "count": 0},
+    {"word": "natural language processing", "weight": 8, "count": 0},
+    {"word": "computer vision", "weight": 8, "count": 0},
+]
+
+# ---------------------------------------------------------------------------
+# FastAPI app
+# ---------------------------------------------------------------------------
+
 app = FastAPI(
     title="KnowledgeWeaver",
     description="Intelligent Research Synthesis System",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,222 +71,214 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize components
-pipeline = SynthesisPipeline()
-query_manager = QueryManager(max_concurrent=4)
-preference_tracker = PreferenceTracker()
-feedback_collector = FeedbackCollector()
-preference_updater = PreferenceUpdater()
-
-# Store for tracking background tasks
-background_tasks_store = {}
+# ---------------------------------------------------------------------------
+# Pydantic request models
+# ---------------------------------------------------------------------------
 
 
-# Pydantic models
 class QueryRequest(BaseModel):
-    """Request model for submitting a query."""
     query_text: str
-    domain: str
     depth: str = "medium"
 
 
 class FeedbackRequest(BaseModel):
-    """Request model for submitting feedback."""
     query_id: str
     rating: int
-    feedback_text: Optional[str] = None
+    feedback_text: str = ""
+
+# ---------------------------------------------------------------------------
+# Background pipeline runner
+# ---------------------------------------------------------------------------
 
 
-class PreferenceRequest(BaseModel):
-    """Request model for updating preferences."""
-    domain: str
-    depth_level: Optional[str] = None
-    paper_type: Optional[str] = None
+async def run_pipeline(query_id: str, query_text: str, depth: str) -> None:
+    """Run the synthesis pipeline for a query, updating queries_store."""
+    async with _pipeline_semaphore:
+        started_at = datetime.utcnow()
+        queries_store[query_id]["status"] = "processing"
+        queries_store[query_id]["started_at"] = started_at.isoformat()
+        progress_store.setdefault(query_id, [])
+
+        def on_progress(message: str) -> None:
+            progress_store[query_id].append(message)
+            queries_store[query_id]["progress_message"] = message
+            logger.debug(f"[{query_id[:8]}] {message}")
+
+        try:
+            query = Query(
+                query_id=query_id,
+                query_text=query_text,
+            )
+            result = await pipeline.process(
+                query, depth=depth, on_progress=on_progress
+            )
+            completed_at = datetime.utcnow()
+            processing_time = (completed_at - started_at).total_seconds()
+            queries_store[query_id].update(
+                {
+                    "status": "completed",
+                    "result_path": Path(result).name if result else None,
+                    "completed_at": completed_at.isoformat(),
+                    "processing_time": processing_time,
+                    "domain": getattr(query, "domain", ""),
+                }
+            )
+            logger.info(
+                f"Query {query_id[:8]} completed in {processing_time:.1f}s"
+            )
+        except Exception as exc:
+            queries_store[query_id].update(
+                {
+                    "status": "failed",
+                    "error_message": str(exc),
+                    "completed_at": datetime.utcnow().isoformat(),
+                }
+            )
+            logger.error(f"Query {query_id[:8]} failed: {exc}")
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 
-# Health check endpoint
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0.0"
-    }
-
-
-# Query endpoints
 @app.post("/api/queries")
 async def submit_query(request: QueryRequest, background_tasks: BackgroundTasks):
     """Submit a new research query."""
-    try:
-        # Validate input
-        if not request.query_text or len(request.query_text.strip()) == 0:
-            raise HTTPException(status_code=400, detail="Query text cannot be empty")
+    if not request.query_text or not request.query_text.strip():
+        raise HTTPException(status_code=400, detail="query_text cannot be empty")
 
-        if request.depth not in ["shallow", "medium", "deep"]:
-            raise HTTPException(status_code=400, detail="Invalid depth level")
+    from uuid import uuid4
+    query_id = str(uuid4())
+    now = datetime.utcnow().isoformat()
 
-        # Create query
-        query = Query(
-            query_text=request.query_text,
-            domain=request.domain
-        )
+    queries_store[query_id] = {
+        "query_id": query_id,
+        "query_text": request.query_text.strip(),
+        "domain": "",
+        "status": "pending",
+        "created_at": now,
+        "started_at": None,
+        "completed_at": None,
+        "result_path": None,
+        "error_message": None,
+        "progress_message": None,
+        "processing_time": None,
+        "user_rating": None,
+        "feedback_text": "",
+    }
+    progress_store[query_id] = []
 
-        # Process in background
-        background_tasks.add_task(
-            process_query,
-            query,
-            request.depth
-        )
-
-        return {
-            "query_id": query.id,
-            "status": "submitted",
-            "message": "Query submitted for processing"
-        }
-
-    except Exception as e:
-        logger.error(f"Error submitting query: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/queries/{query_id}")
-async def get_query_status(query_id: str):
-    """Get the status of a query."""
-    try:
-        # This would normally query the database
-        # For now, return a mock response
-        return {
-            "query_id": query_id,
-            "status": "completed",
-            "result_path": f"./outputs/query_{query_id}.html"
-        }
-    except Exception as e:
-        logger.error(f"Error getting query status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    background_tasks.add_task(run_pipeline, query_id, request.query_text.strip(), request.depth)
+    return {"query_id": query_id, "status": "pending"}
 
 
 @app.get("/api/queries")
 async def list_queries():
-    """List all queries."""
-    try:
-        stats = query_manager.get_stats()
-        return {
-            "total": stats.get("total", 0),
-            "completed": stats.get("completed", 0),
-            "pending": stats.get("pending", 0),
-            "active": stats.get("active", 0)
+    """Return all queries sorted by created_at descending."""
+    rows = sorted(
+        queries_store.values(),
+        key=lambda q: q.get("created_at") or "",
+        reverse=True,
+    )
+    return [
+        {
+            "query_id": q["query_id"],
+            "query_text": q["query_text"],
+            "domain": q.get("domain", ""),
+            "status": q["status"],
+            "created_at": q.get("created_at"),
+            "completed_at": q.get("completed_at"),
+            "result_path": q.get("result_path"),
+            "progress_message": q.get("progress_message"),
         }
-    except Exception as e:
-        logger.error(f"Error listing queries: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        for q in rows
+    ]
 
 
-# Feedback endpoints
+@app.get("/api/queries/{query_id}")
+async def get_query(query_id: str):
+    """Return a single query by ID."""
+    entry = queries_store.get(query_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Query not found")
+    return entry
+
+
+@app.get("/api/queries/{query_id}/progress")
+async def get_query_progress(query_id: str):
+    """Return progress messages for a query."""
+    if query_id not in queries_store:
+        raise HTTPException(status_code=404, detail="Query not found")
+    return {"messages": progress_store.get(query_id, [])}
+
+
+@app.get("/api/recommendations")
+async def get_recommendations():
+    """Return keyword recommendations for the word cloud."""
+    try:
+        recommender = KeywordRecommender()
+        keywords = recommender.get_recommendations(limit=40)
+        return {"keywords": keywords}
+    except Exception as exc:
+        logger.warning(f"KeywordRecommender unavailable, returning seeds: {exc}")
+        return {"keywords": _SEED_KEYWORDS}
+
+
 @app.post("/api/feedback")
 async def submit_feedback(request: FeedbackRequest):
-    """Submit feedback for a query."""
-    try:
-        if not 1 <= request.rating <= 5:
-            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+    """Record user feedback for a completed query."""
+    if request.query_id not in queries_store:
+        raise HTTPException(status_code=404, detail="Query not found")
+    if not 1 <= request.rating <= 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
+    queries_store[request.query_id]["user_rating"] = request.rating
+    queries_store[request.query_id]["feedback_text"] = request.feedback_text
+
+    try:
         feedback_collector.submit_feedback(
             request.query_id,
             rating=request.rating,
-            feedback_text=request.feedback_text
+            feedback_text=request.feedback_text,
         )
+    except Exception as exc:
+        logger.warning(f"FeedbackCollector.submit_feedback failed: {exc}")
 
-        return {
-            "status": "success",
-            "message": "Feedback submitted successfully"
-        }
-    except Exception as e:
-        logger.error(f"Error submitting feedback: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "ok"}
 
 
-@app.get("/api/feedback/{domain}")
-async def get_feedback_analysis(domain: str):
-    """Get feedback analysis for a domain."""
-    try:
-        analysis = feedback_collector.analyze_feedback_patterns(domain)
-        return analysis
-    except Exception as e:
-        logger.error(f"Error getting feedback analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/outputs/{filename}")
+async def serve_output(filename: str):
+    """Serve a generated HTML report from the outputs directory."""
+    # Prevent path traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    output_path = Path(settings.output_dir) / filename
+    if not output_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(str(output_path))
 
 
-# Preference endpoints
-@app.get("/api/preferences/{domain}")
-async def get_preferences(domain: str):
-    """Get preferences for a domain."""
-    try:
-        prefs = preference_tracker.get_preferences(domain)
-        return prefs
-    except Exception as e:
-        logger.error(f"Error getting preferences: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint."""
+    active = sum(
+        1 for q in queries_store.values() if q["status"] == "processing"
+    )
+    return {
+        "status": "healthy",
+        "active_queries": active,
+        "total_queries": len(queries_store),
+    }
 
 
-@app.post("/api/preferences")
-async def update_preferences(request: PreferenceRequest):
-    """Update preferences for a domain."""
-    try:
-        preference_tracker.set_preferences(
-            request.domain,
-            depth_level=request.depth_level,
-            paper_type=request.paper_type
-        )
-
-        return {
-            "status": "success",
-            "message": "Preferences updated successfully"
-        }
-    except Exception as e:
-        logger.error(f"Error updating preferences: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Learning endpoints
-@app.get("/api/learning/{domain}")
-async def get_learning_summary(domain: str):
-    """Get learning summary for a domain."""
-    try:
-        summary = preference_updater.get_learning_summary(domain)
-        return summary
-    except Exception as e:
-        logger.error(f"Error getting learning summary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/suggestions/{domain}")
-async def get_suggestions(domain: str):
-    """Get improvement suggestions for a domain."""
-    try:
-        suggestions = preference_updater.suggest_improvements(domain)
-        return {"suggestions": suggestions}
-    except Exception as e:
-        logger.error(f"Error getting suggestions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Helper function to process query in background
-async def process_query(query: Query, depth: str):
-    """Process a query in the background."""
-    try:
-        logger.info(f"Processing query: {query.query_text}")
-        result_path = await pipeline.process(query, depth=depth)
-        logger.info(f"Query processed: {result_path}")
-    except Exception as e:
-        logger.error(f"Error processing query: {e}")
-
-
-# Serve static files
 @app.get("/")
 async def root():
-    """Serve the main HTML page."""
-    return FileResponse("knowledgeweaver/ui/web/index.html")
+    """Serve the main web UI."""
+    index = Path(__file__).parent / "index.html"
+    return FileResponse(str(index))
 
 
 if __name__ == "__main__":

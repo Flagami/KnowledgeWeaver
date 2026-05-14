@@ -55,8 +55,10 @@ htmlcov/
 
 # Output
 outputs/
-*.html
 reports/
+# Ignore generated HTML reports but not source HTML templates
+*.html
+!knowledgeweaver/**/*.html
 
 # Logs
 *.log

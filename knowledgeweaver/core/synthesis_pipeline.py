@@ -1,10 +1,11 @@
 """Synthesis pipeline orchestrator."""
 
+import asyncio
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from knowledgeweaver.core.domain_detector import DomainDetector
-from knowledgeweaver.core.query_manager import Query, QueryManager
+from knowledgeweaver.core.query_manager import Query
 from knowledgeweaver.output.html_generator import HTMLGenerator
 from knowledgeweaver.processing.extractor import KeyFindingsExtractor
 from knowledgeweaver.processing.fetcher import PaperFetcher
@@ -33,7 +34,6 @@ class SynthesisPipeline:
         self.paper_synthesizer = PaperSynthesizer()
         self.insight_generator = InsightGenerator()
         self.html_generator = HTMLGenerator()
-        self.query_manager = QueryManager()
 
         # Register sources
         self._register_sources()
@@ -58,84 +58,93 @@ class SynthesisPipeline:
         self,
         query: Query,
         depth: str = "medium",
+        on_progress: Optional[Callable[[str], None]] = None,
     ) -> Optional[str]:
         """Process a query through the complete pipeline.
 
         Args:
             query: Query to process
             depth: Synthesis depth ('shallow', 'medium', 'deep')
+            on_progress: Optional callback invoked with a status message at each step
 
         Returns:
             Path to generated HTML report or None on failure
         """
         start_time = time.time()
 
+        def _progress(msg: str) -> None:
+            self.logger.info(msg)
+            if on_progress is not None:
+                on_progress(msg)
+
         try:
             self.logger.info(f"Starting pipeline for query: {query.query_text}")
 
             # Step 1: Detect domain
-            self.logger.debug("Step 1: Detecting domain")
+            _progress("Detecting research domain...")
             domain_result = self.domain_detector.detect(query.query_text)
             query.domain = domain_result.domain
             self.logger.info(f"Detected domain: {domain_result.domain}")
 
-            # Step 2: Search for papers
-            self.logger.debug("Step 2: Searching for papers")
+            # Step 2: Search for papers concurrently across all sources
+            source_count = len(domain_result.sources)
+            _progress(f"Searching papers across {source_count} sources concurrently...")
             papers = await self._search_papers(query.query_text, domain_result.sources)
             if not papers:
                 raise ResearchAgentError("No papers found")
-            self.logger.info(f"Found {len(papers)} papers")
 
-            # Step 3: Fetch and extract text
-            self.logger.debug("Step 3: Fetching and extracting text")
-            papers_with_text = []
-            for paper in papers[:10]:  # Limit to top 10 papers
-                text = await self.paper_fetcher.fetch(paper)
-                if text:
-                    papers_with_text.append((paper, text))
+            # Step 3: Fetch and extract text concurrently
+            _progress(f"Found {len(papers)} papers. Fetching content...")
+            fetch_tasks = [self.paper_fetcher.fetch(p) for p in papers[:10]]
+            fetch_results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
+            papers_with_text = [
+                (papers[i], result)
+                for i, result in enumerate(fetch_results)
+                if not isinstance(result, Exception) and result
+            ]
 
             if not papers_with_text:
                 raise ResearchAgentError("Could not extract text from papers")
-            self.logger.info(f"Extracted text from {len(papers_with_text)} papers")
 
-            # Step 4: Summarize papers
-            self.logger.debug("Step 4: Summarizing papers")
-            summaries = []
-            for paper, text in papers_with_text:
-                try:
-                    summary = await self.paper_summarizer.summarize(
-                        paper, text, depth=depth
-                    )
-                    summaries.append(summary)
-                except Exception as e:
-                    self.logger.warning(f"Failed to summarize paper: {e}")
-                    continue
+            # Step 4: Summarize papers concurrently
+            _progress(
+                f"Extracted text from {len(papers_with_text)} papers. Summarizing..."
+            )
+            summarize_tasks = [
+                self.paper_summarizer.summarize(paper, text, depth=depth)
+                for paper, text in papers_with_text
+            ]
+            summarize_results = await asyncio.gather(
+                *summarize_tasks, return_exceptions=True
+            )
+            summaries = [r for r in summarize_results if not isinstance(r, Exception)]
 
             if not summaries:
                 raise ResearchAgentError("Could not summarize papers")
-            self.logger.info(f"Summarized {len(summaries)} papers")
 
             # Step 5: Synthesize findings
-            self.logger.debug("Step 5: Synthesizing findings")
+            _progress(
+                f"Summarized {len(summaries)} papers. Synthesizing findings..."
+            )
             synthesis = await self.paper_synthesizer.synthesize(summaries, depth=depth)
             self.logger.info("Synthesis complete")
 
             # Step 6: Generate insights
-            self.logger.debug("Step 6: Generating insights")
+            _progress("Generating insights...")
             insights = await self.insight_generator.generate(synthesis, query.query_text)
             self.logger.info("Insights generated")
 
-            # Step 7: Generate HTML
-            self.logger.debug("Step 7: Generating HTML report")
+            # Step 7: Generate HTML report
+            _progress("Building HTML report...")
             html_path = self.html_generator.generate(
                 query=query.query_text,
                 synthesis=synthesis,
                 insights=insights,
                 domain=query.domain,
+                query_id=query.query_id,
             )
             self.logger.info(f"HTML report generated: {html_path}")
 
-            # Calculate processing time
             processing_time = time.time() - start_time
             self.logger.info(f"Pipeline completed in {processing_time:.2f}s")
 
@@ -146,35 +155,41 @@ class SynthesisPipeline:
             raise
 
     async def _search_papers(self, query: str, sources: list[str]) -> list:
-        """Search for papers across multiple sources.
+        """Search for papers across multiple sources concurrently.
 
         Args:
             query: Search query
             sources: List of source names to search
 
         Returns:
-            List of papers from all sources
+            Deduplicated list of papers from all sources
         """
-        all_papers = []
-
+        source_instances = []
         for source_name in sources:
-            try:
-                self.logger.debug(f"Searching {source_name}")
-                source = self._get_source(source_name)
-                if not source:
-                    self.logger.warning(f"Source not found: {source_name}")
-                    continue
+            source = self._get_source(source_name)
+            if source:
+                source_instances.append((source_name, source))
+            else:
+                self.logger.warning(f"Source not found: {source_name}")
 
-                papers = await source.search(query, limit=5)
-                all_papers.extend(papers)
-                self.logger.debug(f"Found {len(papers)} papers from {source_name}")
+        async def _search_one(name: str, src) -> list:
+            self.logger.debug(f"Searching {name}")
+            results = await src.search(query, limit=5)
+            self.logger.debug(f"Found {len(results)} papers from {name}")
+            return results
 
-            except Exception as e:
-                self.logger.warning(f"Error searching {source_name}: {e}")
-                continue
+        tasks = [_search_one(name, src) for name, src in source_instances]
+        gathered = await asyncio.gather(*tasks, return_exceptions=True)
+
+        all_papers = []
+        for item in gathered:
+            if isinstance(item, Exception):
+                self.logger.warning(f"Error during concurrent search: {item}")
+            else:
+                all_papers.extend(item)
 
         # Remove duplicates by title
-        seen_titles = set()
+        seen_titles: set[str] = set()
         unique_papers = []
         for paper in all_papers:
             if paper.title not in seen_titles:
@@ -192,7 +207,6 @@ class SynthesisPipeline:
         Returns:
             Source instance or None
         """
-        # Try to find in registry
         for domain_sources in self.source_registry.get_all_sources().values():
             for source in domain_sources:
                 if source.name == source_name:
