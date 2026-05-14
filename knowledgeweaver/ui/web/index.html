@@ -41,12 +41,12 @@
     }
 
     header {
-      background: rgba(255,255,255,0.85);
+      background: rgba(250,248,244,0.92);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
-      height: 48px;
+      border-bottom: none;
+      padding: 0 32px;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -54,37 +54,32 @@
       top: 0;
       z-index: 100;
     }
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: var(--rule);
+      opacity: 0.35;
+    }
 
     .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-weight: 600;
-      font-size: 0.95rem;
+      font-family: var(--display);
+      font-style: italic;
+      font-size: 1.15rem;
+      font-weight: 400;
       color: var(--text);
-      letter-spacing: -0.01em;
-    }
-    .logo-icon {
-      width: 26px; height: 26px;
-      background: linear-gradient(135deg, #0071e3, #34aadc);
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff;
-      font-size: 13px;
-      flex-shrink: 0;
+      letter-spacing: 0.01em;
     }
 
     .active-indicator {
       display: none;
       align-items: center;
       gap: 6px;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--primary);
-      background: rgba(0,113,227,0.08);
-      padding: 3px 10px;
-      border-radius: var(--radius-badge);
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 0.82rem;
+      color: var(--muted);
     }
     .active-indicator .pulse-dot {
       width: 6px; height: 6px;
@@ -419,13 +414,10 @@
 <body>
 
 <header>
-  <div class="logo">
-    <div class="logo-icon" aria-hidden="true">&#x25C8;</div>
-    <span>KnowledgeWeaver</span>
-  </div>
+  <div class="logo">KnowledgeWeaver</div>
   <span class="active-indicator" id="activeIndicator">
     <span class="pulse-dot" aria-hidden="true"></span>
-    <span id="activeCount">0</span> processing
+    <span id="activeCount">0</span> researching…
   </span>
 </header>
 
