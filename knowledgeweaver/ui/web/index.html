@@ -132,41 +132,41 @@
 
     .query-input {
       flex: 1;
-      padding: 11px 16px;
-      border: 1.5px solid var(--border);
+      padding: 11px 14px;
+      border: 1px solid var(--border);
       border-radius: var(--radius-input);
-      font-size: 0.95rem;
-      font-family: inherit;
+      font-size: 1rem;
+      font-family: var(--serif);
       color: var(--text);
-      background: var(--bg);
+      background: var(--card);
       outline: none;
-      transition: border-color .15s, box-shadow .15s;
+      transition: border-color .15s;
     }
     .query-input:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(0,113,227,0.25);
+      box-shadow: none;
       background: #fff;
     }
-    .query-input::placeholder { color: var(--muted); }
+    .query-input::placeholder { color: var(--muted); font-style: italic; }
 
     .btn-explore {
       padding: 11px 22px;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-badge);
-      font-size: 0.9rem;
-      font-family: inherit;
-      font-weight: 600;
+      background: transparent;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+      border-radius: var(--radius-input);
+      font-size: 0.95rem;
+      font-family: var(--serif);
+      font-weight: 500;
       cursor: pointer;
       white-space: nowrap;
-      transition: background .15s, transform .1s, opacity .15s;
+      transition: background .15s, color .15s, opacity .15s;
       display: flex; align-items: center; gap: 6px;
     }
-    .btn-explore:hover:not(:disabled) { background: var(--primary-hover); }
-    .btn-explore:active:not(:disabled) { transform: scale(.97); }
-    .btn-explore:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-explore:hover:not(:disabled) { background: var(--primary); color: #fefcf8; }
+    .btn-explore:active:not(:disabled) { opacity: .85; }
+    .btn-explore:disabled { opacity: .35; cursor: not-allowed; }
 
     /* ── Bubble cloud ── */
     .cloud-section { margin-top: 24px; }
