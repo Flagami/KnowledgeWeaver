@@ -251,6 +251,8 @@
     .empty-state {
       text-align: center;
       color: var(--muted);
+      font-family: var(--serif);
+      font-style: italic;
       font-size: 0.88rem;
       padding: 32px 0;
     }
@@ -261,11 +263,11 @@
       transition: background .12s;
       position: relative;
       overflow: hidden;
+      border-left: 3px solid transparent;
     }
-    .query-card + .query-card {
-      border-top: 1px solid rgba(0,0,0,0.06);
-    }
-    .query-card:hover { background: rgba(0,0,0,0.02); }
+    .query-card + .query-card { border-top: 1px solid rgba(139,105,20,0.08); }
+    .query-card:hover { background: rgba(139,105,20,0.02); }
+    .query-card.is-processing { border-left-color: var(--rule); }
 
     .query-card-top {
       display: flex;
@@ -283,6 +285,7 @@
     .status-dot-failed     { background: var(--error); }
 
     .query-text {
+      font-family: var(--serif);
       font-weight: 600;
       font-size: 0.93rem;
       color: var(--text);
@@ -299,7 +302,7 @@
       flex-shrink: 0;
     }
     .query-timestamp {
-      font-family: var(--mono);
+      font-family: var(--serif);
       font-size: 0.7rem;
       color: var(--muted);
     }
@@ -318,6 +321,7 @@
       color: var(--muted);
     }
     .query-report {
+      font-family: var(--serif);
       font-size: 0.82rem;
       color: var(--primary);
       text-decoration: none;
@@ -326,11 +330,10 @@
       border: none;
       cursor: pointer;
       padding: 0;
-      font-family: inherit;
     }
     .query-report:hover { text-decoration: underline; }
     .query-error {
-      font-family: var(--mono);
+      font-family: var(--serif);
       font-size: 0.72rem;
       color: var(--error);
     }
@@ -354,22 +357,11 @@
     }
 
     /* ── Status badges ── */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 10px;
-      border-radius: var(--radius-badge);
-      font-family: var(--mono);
-      font-size: 0.7rem;
-      font-weight: 600;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .badge-pending    { background: rgba(110,110,115,0.12); color: var(--muted); }
-    .badge-processing { background: rgba(0,113,227,0.1);   color: var(--primary); }
-    .badge-completed  { background: rgba(52,199,89,0.12);  color: var(--success-text); }
-    .badge-failed     { background: rgba(255,59,48,0.1);   color: var(--error); }
+    .badge { font-family: var(--serif); font-variant: small-caps; text-transform: none; font-size: 0.82rem; font-weight: 500; background: none; padding: 0; border-radius: 0; }
+    .badge-pending    { color: var(--muted); }
+    .badge-processing { color: var(--primary); font-style: italic; }
+    .badge-completed  { color: #2d6a2d; }
+    .badge-failed     { color: #8b2020; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -461,7 +453,7 @@
     <p class="section-label">Research Library</p>
     <h2 class="library-heading" id="library-heading">Research History</h2>
     <div id="query-list" role="list" aria-live="polite" aria-label="Research history">
-      <p class="empty-state">No research yet. Enter a topic above to get started.</p>
+      <p class="empty-state">No research yet. Enter a topic above to begin.</p>
     </div>
   </section>
 </main>
@@ -612,6 +604,7 @@ function buildBadge(status) {
 function renderQueryCard(query) {
   const card = document.createElement('div');
   card.className = 'query-card';
+  if (query.status === 'processing') card.classList.add('is-processing');
   card.setAttribute('role', 'listitem');
   card.dataset.queryId = query.query_id;
 
@@ -697,7 +690,7 @@ function renderQueryCard(query) {
 function renderQueryList(queries) {
   const list = document.getElementById('query-list');
   if (!queries || queries.length === 0) {
-    list.innerHTML = '<p class="empty-state">No research yet. Enter a topic above to get started.</p>';
+    list.innerHTML = '<p class="empty-state">No research yet. Enter a topic above to begin.</p>';
     return;
   }
   const sorted = [...queries].sort(
